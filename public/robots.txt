@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://ncit-hub.vercel.app/sitemap.xml
+
+# Disallow admin pages from search engines
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /profile
+Disallow: /create-blog
+Disallow: /edit-blog
+
+# Allow important pages
+Allow: /
+Allow: /blogs
+Allow: /blogs/*
+Allow: /about
+Allow: /events
+Allow: /events/*
+
+# Crawl delay
+Crawl-delay: 1
