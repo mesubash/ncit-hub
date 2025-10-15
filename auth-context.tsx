@@ -212,7 +212,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasSession: !!session,
         hasUser: !!session?.user,
         userEmail: session?.user?.email,
-        isInitialLoad: isInitialLoad.current,
       });
       
       if (event === "INITIAL_SESSION") {
@@ -226,18 +225,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isAuthenticated: false,
           });
         }
-        // Mark initial load as complete
-        isInitialLoad.current = false;
       } else if (event === "SIGNED_IN" && session?.user) {
-        // Only show toast if this is NOT the initial load (i.e., user actually just logged in)
+        // User just signed in - show welcome toast
         await loadUser(session.user.id, session.user.email || '');
-        if (!isInitialLoad.current) {
-          toast({
-            title: "Welcome!",
-            description: "You have successfully signed in.",
-          });
-        }
-        isInitialLoad.current = false;
+        toast({
+          title: "Welcome!",
+          description: "You have successfully signed in.",
+        });
       } else if (event === "SIGNED_OUT") {
         // User signed out
         setAuthState({
