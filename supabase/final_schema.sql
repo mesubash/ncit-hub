@@ -130,6 +130,15 @@ CREATE TABLE IF NOT EXISTS public.comment_likes (
     UNIQUE(user_id, comment_id)
 );
 
+-- Create bookmarks table
+CREATE TABLE IF NOT EXISTS public.bookmarks (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    blog_id UUID REFERENCES public.blogs(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, blog_id)
+);
+
 -- Create event registrations table
 CREATE TABLE IF NOT EXISTS public.event_registrations (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -166,6 +175,9 @@ CREATE INDEX IF NOT EXISTS idx_comments_blog_id ON public.comments(blog_id);
 CREATE INDEX IF NOT EXISTS idx_likes_blog_id ON public.likes(blog_id);
 CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id ON public.comment_likes(comment_id);
 CREATE INDEX IF NOT EXISTS idx_comment_likes_user_id ON public.comment_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON public.bookmarks(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_blog_id ON public.bookmarks(blog_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_created_at ON public.bookmarks(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_event_registrations_event_id ON public.event_registrations(event_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
@@ -178,6 +190,7 @@ ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comment_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bookmarks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
@@ -339,6 +352,22 @@ WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own comment likes"
 ON public.comment_likes FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
+-- Bookmarks policies
+CREATE POLICY "Users can view their own bookmarks"
+ON public.bookmarks FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create their own bookmarks"
+ON public.bookmarks FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own bookmarks"
+ON public.bookmarks FOR DELETE
 TO authenticated
 USING (auth.uid() = user_id);
 

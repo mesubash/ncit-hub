@@ -16,7 +16,13 @@ import {
   subscribeToBlogLikes,
 } from "@/lib/comments"
 import { getCommentCount } from "@/lib/comments"
-import { Share2, BookmarkPlus, MessageSquare, Heart, Info } from "lucide-react"
+import {
+  bookmarkBlog,
+  unbookmarkBlog,
+  hasUserBookmarkedBlog,
+  subscribeToBookmarks,
+} from "@/lib/bookmarks"
+import { Share2, BookmarkPlus, Bookmark, MessageSquare, Heart, Info } from "lucide-react"
 import Link from "next/link"
 import {
   Dialog,
@@ -44,16 +50,28 @@ export function BlogInteractions({
   const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
   const [isLiked, setIsLiked] = useState(false)
+  const [isBookmarked, setIsBookmarked] = useState(false)
   const [likesCount, setLikesCount] = useState(initialLikes)
   const [commentCount, setCommentCount] = useState(0)
   const [isLoadingLike, setIsLoadingLike] = useState(true)
+  const [isLoadingBookmark, setIsLoadingBookmark] = useState(true)
+  const [shareUrl, setShareUrl] = useState("")
+
+  // Set share URL on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setShareUrl(`${window.location.origin}${blogUrl}`)
+    }
+  }, [blogUrl])
 
   // Load initial like state
   useEffect(() => {
     if (user?.id) {
       loadLikeState()
+      loadBookmarkState()
     } else {
       setIsLoadingLike(false)
+      setIsLoadingBookmark(false)
     }
   }, [user?.id, blogId])
 
@@ -74,12 +92,33 @@ export function BlogInteractions({
     }
   }, [blogId])
 
+  // Subscribe to real-time bookmark updates
+  useEffect(() => {
+    if (!user?.id) return
+
+    const channel = subscribeToBookmarks(blogId, () => {
+      loadBookmarkState()
+    })
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [blogId, user?.id])
+
   const loadLikeState = async () => {
     if (!user?.id) return
 
     const { isLiked: liked } = await hasUserLikedBlog(blogId, user.id)
     setIsLiked(liked)
     setIsLoadingLike(false)
+  }
+
+  const loadBookmarkState = async () => {
+    if (!user?.id) return
+
+    const { isBookmarked: bookmarked } = await hasUserBookmarkedBlog(blogId, user.id)
+    setIsBookmarked(bookmarked)
+    setIsLoadingBookmark(false)
   }
 
   const loadCommentCount = async () => {
@@ -104,8 +143,45 @@ export function BlogInteractions({
     await unlikeBlog(blogId, user.id)
   }
 
+  const handleBookmark = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to bookmark this blog",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      if (isBookmarked) {
+        const { error } = await unbookmarkBlog(blogId, user.id)
+        if (error) throw new Error(error)
+        setIsBookmarked(false)
+        toast({
+          title: "Bookmark removed",
+          description: "Blog removed from your bookmarks",
+        })
+      } else {
+        const { error } = await bookmarkBlog(blogId, user.id)
+        if (error) throw new Error(error)
+        setIsBookmarked(true)
+        toast({
+          title: "Bookmarked!",
+          description: "Blog saved to your bookmarks",
+        })
+      }
+    } catch (error) {
+      console.error("Error toggling bookmark:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update bookmark",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleShare = async (platform: string) => {
-    const shareUrl = `${window.location.origin}${blogUrl}`
     const shareText = `Check out this blog: ${blogTitle}`
 
     const urls: Record<string, string> = {
@@ -116,11 +192,19 @@ export function BlogInteractions({
     }
 
     if (platform === "copy") {
-      await navigator.clipboard.writeText(shareUrl)
-      toast({
-        title: "Link copied!",
-        description: "Blog link copied to clipboard",
-      })
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        toast({
+          title: "Link copied!",
+          description: "Blog link copied to clipboard",
+        })
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to copy link",
+          variant: "destructive",
+        })
+      }
     } else if (urls[platform]) {
       window.open(urls[platform], "_blank", "noopener,noreferrer")
     }
@@ -182,19 +266,36 @@ export function BlogInteractions({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Bookmark Button (placeholder) */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              toast({
-                title: "Coming soon!",
-                description: "Bookmarking feature will be available soon",
-              })
-            }}
-          >
-            <BookmarkPlus className="h-4 w-4" />
-          </Button>
+          {/* Bookmark Button */}
+          {isAuthenticated && !isLoadingBookmark ? (
+            <Button
+              variant={isBookmarked ? "default" : "outline"}
+              size="sm"
+              onClick={handleBookmark}
+              className={isBookmarked ? "bg-blue-500 hover:bg-blue-600" : ""}
+            >
+              {isBookmarked ? (
+                <>
+                  <Bookmark className="h-4 w-4 fill-current" />
+                </>
+              ) : (
+                <>
+                  <BookmarkPlus className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          ) : !isAuthenticated ? (
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="cursor-pointer hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:hover:bg-blue-950/20"
+            >
+              <Link href="/login">
+                <BookmarkPlus className="h-4 w-4" />
+              </Link>
+            </Button>
+          ) : null}
 
           {/* Share Button */}
           <Dialog>
@@ -244,7 +345,7 @@ export function BlogInteractions({
                 </div>
                 <div className="flex items-center gap-2">
                   <Input
-                    value={`${window.location.origin}${blogUrl}`}
+                    value={shareUrl}
                     readOnly
                     className="flex-1"
                   />

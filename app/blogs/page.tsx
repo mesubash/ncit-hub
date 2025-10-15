@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Navigation } from "@/components/navigation"
 import { getAllBlogs, getCategories, getUserLikedBlogs, toggleBlogLike, type Blog, type CategoryRow } from "@/lib/blog"
 import { getCommentCount } from "@/lib/comments"
+import { getUserBookmarkedBlogIds, toggleBookmark } from "@/lib/bookmarks"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import { Search, User, Calendar, ArrowLeft, Heart, MessageCircle, Bookmark, TrendingUp, Loader2, Plus } from "lucide-react"
@@ -22,6 +23,7 @@ export default function BlogsPage() {
   const [likedPosts, setLikedPosts] = useState<string[]>([])
   const [bookmarkedPosts, setBookmarkedPosts] = useState<string[]>([])
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
+  const [filterType, setFilterType] = useState<"all" | "bookmarked">("all")
   const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export default function BlogsPage() {
   useEffect(() => {
     if (user) {
       loadUserLikes()
+      loadUserBookmarks()
     }
   }, [user])
 
@@ -87,6 +90,21 @@ export default function BlogsPage() {
     }
   }
 
+  const loadUserBookmarks = async () => {
+    if (!user) return
+
+    try {
+      const { blogIds, error } = await getUserBookmarkedBlogIds(user.id)
+      if (error) {
+        console.error("Failed to load user bookmarks:", error)
+      } else {
+        setBookmarkedPosts(blogIds)
+      }
+    } catch (error) {
+      console.error("Failed to load user bookmarks:", error)
+    }
+  }
+
   const handleToggleLike = async (blogId: string) => {
     if (!user) return
 
@@ -106,8 +124,24 @@ export default function BlogsPage() {
     }
   }
 
-  const toggleBookmark = (blogId: string) => {
-    setBookmarkedPosts((prev) => (prev.includes(blogId) ? prev.filter((id) => id !== blogId) : [...prev, blogId]))
+  const handleToggleBookmark = async (blogId: string) => {
+    if (!user) return
+
+    try {
+      const { error } = await toggleBookmark(blogId, user.id)
+      if (error) {
+        console.error("Failed to toggle bookmark:", error)
+      } else {
+        // Toggle bookmark in local state
+        setBookmarkedPosts((prev) => 
+          prev.includes(blogId) 
+            ? prev.filter((id) => id !== blogId) 
+            : [...prev, blogId]
+        )
+      }
+    } catch (error) {
+      console.error("Failed to toggle bookmark:", error)
+    }
   }
 
   const filteredBlogs = blogs.filter((blog) => {
@@ -119,7 +153,10 @@ export default function BlogsPage() {
       selectedCategory === "All" ||
       (blog.category && blog.category.name === selectedCategory) ||
       (!blog.category && selectedCategory === "Uncategorized")
-    return matchesSearch && matchesCategory
+    const matchesFilter = 
+      filterType === "all" || 
+      (filterType === "bookmarked" && bookmarkedPosts.includes(blog.id))
+    return matchesSearch && matchesCategory && matchesFilter
   })
 
   const trendingBlogs = blogs
@@ -209,6 +246,28 @@ export default function BlogsPage() {
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3">
+            {/* Filter Tabs */}
+            {isAuthenticated && bookmarkedPosts.length > 0 && (
+              <div className="mb-4 flex gap-2">
+                <Button
+                  variant={filterType === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterType("all")}
+                >
+                  All Blogs
+                </Button>
+                <Button
+                  variant={filterType === "bookmarked" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterType("bookmarked")}
+                  className="flex items-center gap-2"
+                >
+                  <Bookmark className="h-4 w-4" />
+                  Bookmarked ({bookmarkedPosts.length})
+                </Button>
+              </div>
+            )}
+
             {/* Search and Filters */}
             <div className="mb-8 space-y-4">
               <div className="relative max-w-md">
@@ -354,11 +413,12 @@ export default function BlogsPage() {
                           </div>
                         </div>
                         <button
-                          onClick={() => toggleBookmark(blog.id)}
+                          onClick={() => handleToggleBookmark(blog.id)}
+                          disabled={!user}
                           title={!user ? "Please log in to bookmark this blog" : "Bookmark"}
                           className={`hover:text-blue-500 transition-colors ${
                             bookmarkedPosts.includes(blog.id) ? "text-blue-500" : ""
-                          } ${!user ? "opacity-50" : ""}`}
+                          } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <Bookmark className={`h-4 w-4 ${bookmarkedPosts.includes(blog.id) ? "fill-current" : ""}`} />
                         </button>
