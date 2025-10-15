@@ -33,6 +33,7 @@ export interface Blog {
   likes: number;
   created_at: string;
   updated_at: string;
+  published_at: string | null;
 }
 
 export const blogCategories = [
@@ -507,6 +508,7 @@ function transformBlogData(data: any): Blog {
     likes: data.likes,
     created_at: data.created_at,
     updated_at: data.updated_at,
+    published_at: data.published_at,
   };
 }
 

@@ -65,7 +65,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
           {/* Article Header */}
           <header className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Badge variant="secondary">{blog.category}</Badge>
+              <Badge variant="secondary">{blog.category?.name || "Uncategorized"}</Badge>
               <span className="text-sm text-muted-foreground">
                 {Math.ceil(blog.content.split(" ").length / 200)} min read
               </span>
@@ -91,7 +91,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
                   <div className="flex items-center text-sm text-muted-foreground space-x-4">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-1" />
-                      {new Date(blog.publishedAt || blog.createdAt).toLocaleDateString()}
+                      {new Date(blog.published_at || blog.created_at).toLocaleDateString()}
                     </div>
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-1" />
@@ -171,7 +171,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
               <span>{blog.views} views</span>
               <span>{Math.floor(blog.views / 10)} likes</span>
             </div>
-            <div>Published on {new Date(blog.publishedAt || blog.createdAt).toLocaleDateString()}</div>
+            <div>Published on {new Date(blog.published_at || blog.created_at).toLocaleDateString()}</div>
           </div>
         </article>
       </div>
