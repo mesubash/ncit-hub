@@ -81,6 +81,7 @@ export interface Database {
         Row: {
           id: string;
           title: string;
+          slug: string;
           content: string;
           excerpt: string | null;
           author_id: string;
@@ -88,15 +89,18 @@ export interface Database {
           tags: string[];
           images: string[];
           featured_image: string | null;
-          status: "draft" | "published" | "archived";
+          status: "draft" | "published" | "archived" | "pending";
           views: number;
           likes: number;
           created_at: string;
           updated_at: string;
+          published_at: string | null;
+          rejection_reason: string | null;
         };
         Insert: {
           id?: string;
           title: string;
+          slug: string;
           content: string;
           excerpt?: string | null;
           author_id: string;
@@ -104,15 +108,18 @@ export interface Database {
           tags?: string[];
           images?: string[];
           featured_image?: string | null;
-          status?: "draft" | "published" | "archived";
+          status?: "draft" | "published" | "archived" | "pending";
           views?: number;
           likes?: number;
           created_at?: string;
           updated_at?: string;
+          published_at?: string | null;
+          rejection_reason?: string | null;
         };
         Update: {
           id?: string;
           title?: string;
+          slug?: string;
           content?: string;
           excerpt?: string | null;
           author_id?: string;
@@ -120,11 +127,13 @@ export interface Database {
           tags?: string[];
           images?: string[];
           featured_image?: string | null;
-          status?: "draft" | "published" | "archived";
+          status?: "draft" | "published" | "archived" | "pending";
           views?: number;
           likes?: number;
           created_at?: string;
           updated_at?: string;
+          published_at?: string | null;
+          rejection_reason?: string | null;
         };
       };
       events: {

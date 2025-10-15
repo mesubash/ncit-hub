@@ -10,7 +10,7 @@ import { AdminGuard } from "@/components/admin-guard"
 import { getAllBlogs, deleteBlog, type Blog } from "@/lib/blog"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { ArrowLeft, Plus, Edit, Trash2, Eye, Search, Loader2, AlertCircle } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Eye, Search, Loader2, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import {
   AlertDialog,
@@ -275,9 +275,6 @@ export default function AdminBlogsPage() {
                           <div className="flex justify-end space-x-2">
                             <Button size="sm" variant="ghost" asChild>
                               <Link href={`/blogs/${blog.id}`}><Eye className="h-4 w-4" /></Link>
-                            </Button>
-                            <Button size="sm" variant="ghost" asChild>
-                              <Link href={`/edit-blog/${blog.id}`}><Edit className="h-4 w-4" /></Link>
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

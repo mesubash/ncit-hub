@@ -446,6 +446,16 @@ export default function ProfilePage() {
                         <p className="text-sm text-red-800 dark:text-red-200">
                           <strong>Note:</strong> This blog has been archived and is no longer visible to the public.
                         </p>
+                        {blog.rejection_reason && (
+                          <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-700">
+                            <p className="text-sm text-red-900 dark:text-red-100 font-semibold mb-1">
+                              Admin Feedback:
+                            </p>
+                            <p className="text-sm text-red-800 dark:text-red-200 italic">
+                              {blog.rejection_reason}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

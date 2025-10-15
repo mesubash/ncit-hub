@@ -7,9 +7,13 @@ import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, Calendar, Clock, Share2, BookmarkPlus, Heart } from "lucide-react"
 import { Navigation } from "@/components/navigation"
-import { getBlogById, getAllBlogs } from "@/lib/blog"
+import { getBlogByIdServer } from "@/lib/blog-server"
+import { getAllBlogs } from "@/lib/blog"
 import { generateBlogMetadata, generateStructuredData } from "@/lib/seo"
 import { notFound } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import { getCurrentUserServer } from "@/lib/auth-server"
+import { MarkdownRenderer } from "@/components/markdown-renderer"
 
 interface BlogPageProps {
   params: {
@@ -18,7 +22,7 @@ interface BlogPageProps {
 }
 
 export async function generateMetadata({ params }: BlogPageProps) {
-  const { blog, error } = await getBlogById(params.id)
+  const { blog, error } = await getBlogByIdServer(params.id)
 
   if (error || !blog) {
     return {
@@ -39,9 +43,14 @@ export async function generateStaticParams() {
 }
 
 export default async function BlogPage({ params }: BlogPageProps) {
-  const { blog, error } = await getBlogById(params.id)
+  const { blog, error } = await getBlogByIdServer(params.id)
 
-  if (error || !blog || blog.status !== "published") {
+  // Get current user to check if they're an admin
+  const currentUser = await getCurrentUserServer()
+  const isAdmin = currentUser?.role === "admin"
+
+  // Allow viewing if blog is published OR user is admin (for preview)
+  if (error || !blog || (blog.status !== "published" && !isAdmin)) {
     notFound()
   }
 
@@ -54,11 +63,25 @@ export default async function BlogPage({ params }: BlogPageProps) {
         <Navigation />
 
         <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Admin Preview Banner */}
+          {isAdmin && blog.status !== "published" && (
+            <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-200 dark:border-yellow-700">
+                  Admin Preview
+                </Badge>
+                <span className="text-sm text-yellow-800 dark:text-yellow-200">
+                  This {blog.status} blog is only visible to you. Regular users cannot see it yet.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Back Button */}
           <Button variant="ghost" size="sm" asChild className="mb-6">
-            <Link href="/blogs">
+            <Link href={isAdmin && blog.status !== "published" ? "/admin/review" : "/blogs"}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Blogs
+              {isAdmin && blog.status !== "published" ? "Back to Review" : "Back to Blogs"}
             </Link>
           </Button>
 
@@ -143,13 +166,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
           )}
 
           {/* Article Content */}
-          <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
-            {blog.content.split("\n").map((paragraph, index) => (
-              <p key={index} className="mb-4 leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
-          </div>
+          <MarkdownRenderer content={blog.content} className="mb-8" />
 
           {/* Tags */}
           <div className="mb-8">

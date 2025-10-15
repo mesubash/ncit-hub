@@ -148,7 +148,7 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button className="w-full justify-start" asChild>
-                  <Link href="/admin/blogs/new">
+                  <Link href="/create-blog">
                     <Plus className="h-4 w-4 mr-2" />
                     Create New Blog Post
                   </Link>

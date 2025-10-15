@@ -34,6 +34,7 @@ export interface Blog {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  rejection_reason: string | null;
 }
 
 export const blogCategories = [
@@ -43,6 +44,25 @@ export const blogCategories = [
   "Technical",
   "General",
 ];
+
+// Utility function to strip markdown formatting from text
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/#+\s/g, "") // Remove headers
+    .replace(/\*\*(.+?)\*\*/g, "$1") // Remove bold
+    .replace(/\*(.+?)\*/g, "$1") // Remove italic
+    .replace(/_(.+?)_/g, "$1") // Remove italic (underscore)
+    .replace(/`(.+?)`/g, "$1") // Remove inline code
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1") // Remove links but keep text
+    .replace(/!\[.*?\]\(.+?\)/g, "") // Remove images
+    .replace(/>\s/g, "") // Remove blockquotes
+    .replace(/[-*+]\s/g, "") // Remove list markers
+    .replace(/\d+\.\s/g, "") // Remove numbered list markers
+    .replace(/~~(.+?)~~/g, "$1") // Remove strikethrough
+    .replace(/\n{2,}/g, " ") // Replace multiple newlines with space
+    .replace(/\n/g, " ") // Replace single newlines with space
+    .trim();
+}
 
 // Create a new blog
 export async function createBlog(blogData: {
@@ -497,12 +517,12 @@ async function getPendingBlogsLegacy(): Promise<Blog[]> {
 }
 
 // Helper function to transform database data to Blog interface
-function transformBlogData(data: any): Blog {
+export function transformBlogData(data: any): Blog {
   return {
     id: data.id,
     title: data.title,
     content: data.content,
-    excerpt: data.excerpt,
+    excerpt: data.excerpt ? stripMarkdown(data.excerpt) : null, // Strip markdown from excerpt
     author_id: data.author_id,
     author: data.profiles
       ? {
@@ -529,15 +549,14 @@ function transformBlogData(data: any): Blog {
     created_at: data.created_at,
     updated_at: data.updated_at,
     published_at: data.published_at,
+    rejection_reason: data.rejection_reason,
   };
 }
 
 // Generate excerpt from content
 export function generateExcerpt(content: string, maxLength = 150): string {
-  const plainText = content
-    .replace(/<[^>]*>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  // First strip all markdown formatting
+  const plainText = stripMarkdown(content);
   if (plainText.length <= maxLength) return plainText;
   return plainText.substring(0, maxLength).trim() + "...";
 }

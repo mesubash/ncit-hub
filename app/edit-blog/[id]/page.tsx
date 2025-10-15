@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Navigation } from "@/components/navigation"
 import { AuthGuard } from "@/components/auth-guard"
 import { ImageUpload } from "@/components/image-upload"
+import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { useAuth } from "@/contexts/auth-context"
 import { getBlogById, updateBlog, getCategories, generateExcerpt, type CategoryRow } from "@/lib/blog"
 import { ArrowLeft, Save, Send, Loader2, Eye, FileText, Type, Hash, BookOpen, Calendar, AlertCircle } from "lucide-react"
@@ -382,6 +383,7 @@ export default function EditBlogPage() {
                         <span>`code`</span>
                         <span># Heading</span>
                         <span>- List item</span>
+                        <span className="text-green-600 dark:text-green-400">Press Enter for new line</span>
                       </div>
                     </div>
 
@@ -440,44 +442,11 @@ export default function EditBlogPage() {
                 </CardHeader>
                 <CardContent>
                   {/* Preview Content */}
-                  <div className="prose prose-sm sm:prose lg:prose-lg dark:prose-invert max-w-none">
-                    {formData.content ? (
-                      <div className="whitespace-pre-wrap break-words">
-                        {formData.content.split('\n').map((paragraph, index) => {
-                          let content = paragraph
-                          
-                          // Headings
-                          if (content.startsWith('# ')) {
-                            return <h1 key={index} className="text-3xl font-bold mt-6 mb-4">{content.substring(2)}</h1>
-                          }
-                          if (content.startsWith('## ')) {
-                            return <h2 key={index} className="text-2xl font-bold mt-5 mb-3">{content.substring(3)}</h2>
-                          }
-                          if (content.startsWith('### ')) {
-                            return <h3 key={index} className="text-xl font-bold mt-4 mb-2">{content.substring(4)}</h3>
-                          }
-                          
-                          // Lists
-                          if (content.startsWith('- ') || content.startsWith('* ')) {
-                            return <li key={index} className="ml-4">{content.substring(2)}</li>
-                          }
-                          
-                          // Bold and italic
-                          content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                          content = content.replace(/\*(.+?)\*/g, '<em>$1</em>')
-                          content = content.replace(/`(.+?)`/g, '<code class="bg-muted px-1 py-0.5 rounded">$1</code>')
-                          
-                          return paragraph ? (
-                            <p key={index} className="mb-4" dangerouslySetInnerHTML={{ __html: content }} />
-                          ) : (
-                            <br key={index} />
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground italic">Your blog content will appear here...</p>
-                    )}
-                  </div>
+                  {formData.content ? (
+                    <MarkdownRenderer content={formData.content} />
+                  ) : (
+                    <p className="text-muted-foreground italic">Your blog content will appear here...</p>
+                  )}
 
                   {/* Preview Images */}
                   {formData.images.length > 0 && (

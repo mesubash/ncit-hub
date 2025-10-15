@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Navigation } from "@/components/navigation"
 import { AdminGuard } from "@/components/admin-guard"
+import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { getPendingBlogs, updateBlog, type Blog } from "@/lib/blog"
 import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, Eye, CheckCircle, XCircle, Clock, User, Calendar, Tag, Loader2 } from "lucide-react"
@@ -102,6 +103,7 @@ export default function AdminReviewPage() {
     try {
       await updateBlog(blogId, {
         status: "archived", // Use archived instead of rejected
+        rejection_reason: reason.trim(), // Save the rejection reason
       })
 
       setPendingBlogs((prev) => prev.filter((blog) => blog.id !== blogId))
@@ -214,9 +216,9 @@ export default function AdminReviewPage() {
                     </div>
 
                     <div className="mb-6">
-                      <h4 className="font-semibold text-foreground mb-2">Full Content:</h4>
+                      <h4 className="font-semibold text-foreground mb-2">Full Content Preview:</h4>
                       <div className="bg-muted/30 p-4 rounded-lg max-h-64 overflow-y-auto">
-                        <div className="whitespace-pre-wrap text-sm">{blog.content}</div>
+                        <MarkdownRenderer content={blog.content} className="text-sm" />
                       </div>
                     </div>
 
@@ -245,7 +247,7 @@ export default function AdminReviewPage() {
                           <DialogHeader>
                             <DialogTitle>Reject Blog Submission</DialogTitle>
                             <DialogDescription>
-                              Please provide feedback to help the author improve their submission.
+                              Please provide feedback to help the author improve their submission. The author can edit and resubmit the blog after reviewing your feedback.
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">

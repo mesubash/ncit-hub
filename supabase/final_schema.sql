@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.blogs (
     status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'published', 'archived')),
     views INTEGER DEFAULT 0,
     likes INTEGER DEFAULT 0,
+    rejection_reason TEXT,  -- Feedback from admin when a blog is rejected
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     published_at TIMESTAMP WITH TIME ZONE,
