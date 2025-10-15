@@ -24,7 +24,10 @@ export default function NewEventPage() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [date, setDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const [time, setTime] = useState("")
+  const [endTime, setEndTime] = useState("")
+  const [isMultiDay, setIsMultiDay] = useState(false)
   const [location, setLocation] = useState("")
   const [category, setCategory] = useState("")
   const [organizer, setOrganizer] = useState("")
@@ -89,13 +92,17 @@ export default function NewEventPage() {
     setIsLoading(true)
 
     try {
-      // Combine date and time
+      // Combine date and time for start
       const eventDateTime = `${date}T${time}:00`
+      
+      // If multi-day, combine end date and time
+      const endDateTime = isMultiDay && endDate && endTime ? `${endDate}T${endTime}:00` : undefined
 
       const { event, error } = await createEvent({
         title,
         description,
         event_date: eventDateTime,
+        end_date: endDateTime,
         location,
         organizer_id: user.id,
         category_id: category || undefined,
@@ -182,36 +189,85 @@ export default function NewEventPage() {
                     />
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="date">Date</Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="date"
-                          type="date"
-                          className="pl-10"
-                          value={date}
-                          onChange={(e) => setDate(e.target.value)}
-                          required
-                        />
+                  {/* Date and Time Selection */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="multiDay"
+                        checked={isMultiDay}
+                        onChange={(e) => setIsMultiDay(e.target.checked)}
+                        className="rounded border-gray-300 h-4 w-4"
+                      />
+                      <Label htmlFor="multiDay" className="cursor-pointer font-normal">Multi-day event</Label>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="date">Start Date *</Label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="date"
+                            type="date"
+                            className="pl-10"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="time">Start Time *</Label>
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="time"
+                            type="time"
+                            className="pl-10"
+                            value={time}
+                            onChange={(e) => setTime(e.target.value)}
+                            required
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="time">Time</Label>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="time"
-                          placeholder="e.g., 10:00 AM - 4:00 PM"
-                          className="pl-10"
-                          value={time}
-                          onChange={(e) => setTime(e.target.value)}
-                          required
-                        />
+                    {isMultiDay && (
+                      <div className="grid md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/30">
+                        <div>
+                          <Label htmlFor="endDate">End Date *</Label>
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="endDate"
+                              type="date"
+                              className="pl-10"
+                              value={endDate}
+                              onChange={(e) => setEndDate(e.target.value)}
+                              required={isMultiDay}
+                              min={date}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="endTime">End Time *</Label>
+                          <div className="relative">
+                            <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="endTime"
+                              type="time"
+                              className="pl-10"
+                              value={endTime}
+                              onChange={(e) => setEndTime(e.target.value)}
+                              required={isMultiDay}
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   <div>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Navigation } from "@/components/navigation"
+import { MarkdownRenderer } from "@/components/markdown-renderer"
 import {
   getAllEvents,
   registerForEvent,
@@ -14,7 +15,7 @@ import {
   isUserRegisteredForEvent,
   type Event,
 } from "@/lib/events"
-import { getCategories as getBlogCategories, type CategoryRow } from "@/lib/blog"
+import { getCategories as getBlogCategories, type CategoryRow, stripMarkdown } from "@/lib/blog"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import { Search, Calendar, Clock, MapPin, ArrowLeft, Users, Loader2, UserPlus, UserMinus } from "lucide-react"
@@ -162,16 +163,27 @@ export default function EventsPage() {
               </Link>
             </Button>
             
-            {/* Admin add event button */}
+            {/* Admin buttons */}
             {user && user.role === 'admin' && (
-              <Button asChild className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700">
-                <Link href="/admin/events/new">
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Event
-                </Link>
-              </Button>
+              <div className="flex gap-2">
+                <Button asChild variant="outline" className="bg-transparent">
+                  <Link href="/admin/events">
+                    <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Manage Events
+                  </Link>
+                </Button>
+                <Button asChild className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700">
+                  <Link href="/admin/events/new">
+                    <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Event
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
           <div className="text-center mb-8">
@@ -238,7 +250,7 @@ export default function EventsPage() {
                   const isLoadingRegistration = registrationLoading.includes(event.id)
                   const eventDate = new Date(event.event_date)
                   const isPastEvent = eventDate < new Date()
-                  const isEventFull = event.max_participants && event.current_participants >= event.max_participants
+                  const isEventFull = !!(event.max_participants && event.current_participants >= event.max_participants)
 
                   return (
                     <Card
@@ -264,7 +276,9 @@ export default function EventsPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="flex-grow flex flex-col justify-between">
-                        <CardDescription className="mb-4 line-clamp-3 flex-grow">{event.description}</CardDescription>
+                        <CardDescription className="mb-4 line-clamp-3 flex-grow">
+                          {stripMarkdown(event.description)}
+                        </CardDescription>
 
                         {/* Event Details */}
                         <div className="space-y-2 text-sm text-muted-foreground mb-4">

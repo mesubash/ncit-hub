@@ -1,73 +1,107 @@
-import { createClient } from "@/lib/supabase/client"
-import type { Database } from "@/lib/supabase/types"
+import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/types";
 
-export type EventRow = Database["public"]["Tables"]["events"]["Row"]
-export type EventInsert = Database["public"]["Tables"]["events"]["Insert"]
-export type EventUpdate = Database["public"]["Tables"]["events"]["Update"]
-export type EventRegistrationRow = Database["public"]["Tables"]["event_registrations"]["Row"]
+export type EventRow = Database["public"]["Tables"]["events"]["Row"];
+export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
+export type EventUpdate = Database["public"]["Tables"]["events"]["Update"];
+export type EventRegistrationRow =
+  Database["public"]["Tables"]["event_registrations"]["Row"];
 
 // Enhanced Event interface with organizer details
 export interface Event {
-  id: string
-  title: string
-  description: string
-  organizer_id: string
+  id: string;
+  title: string;
+  description: string;
+  organizer_id: string;
   organizer?: {
-    id: string
-    full_name: string | null
-    email: string
-    avatar_url: string | null
-  }
-  category_id: string | null
+    id: string;
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  };
+  category_id: string | null;
   category?: {
-    id: string
-    name: string
-    color: string
-  }
-  event_date: string
-  location: string
-  max_participants: number | null
-  current_participants: number
-  registration_deadline: string | null
-  images: string[]
-  featured_image: string | null
-  status: "upcoming" | "ongoing" | "completed" | "cancelled"
-  created_at: string
-  updated_at: string
+    id: string;
+    name: string;
+    color: string;
+  };
+  event_date: string;
+  end_date?: string | null; // For multi-day events
+  location: string;
+  max_participants: number | null;
+  current_participants: number;
+  registration_deadline: string | null;
+  images: string[];
+  featured_image: string | null;
+  status: "upcoming" | "ongoing" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
 }
 
 export interface EventRegistration {
-  id: string
-  user_id: string
-  event_id: string
-  registration_date: string
-  status: "registered" | "attended" | "cancelled"
+  id: string;
+  user_id: string;
+  event_id: string;
+  registration_date: string;
+  status: "registered" | "attended" | "cancelled";
+}
+
+// Utility function to generate URL-friendly slug from title
+export function generateEventSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Remove special characters
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .substring(0, 100); // Limit length
 }
 
 // Create a new event
 export async function createEvent(eventData: {
-  title: string
-  description: string
-  organizer_id: string
-  category_id?: string
-  event_date: string
-  location: string
-  max_participants?: number
-  registration_deadline?: string
-  images?: string[]
-  featured_image?: string
-  status?: "upcoming" | "ongoing" | "completed" | "cancelled"
+  title: string;
+  description: string;
+  organizer_id: string;
+  category_id?: string;
+  event_date: string;
+  end_date?: string;
+  location: string;
+  max_participants?: number;
+  registration_deadline?: string;
+  images?: string[];
+  featured_image?: string;
+  status?: "upcoming" | "ongoing" | "completed" | "cancelled";
 }): Promise<{ event: Event | null; error: string | null }> {
-  const supabase = createClient()
+  const supabase = createClient();
+
+  // Generate slug from title
+  const baseSlug = generateEventSlug(eventData.title);
+  let slug = baseSlug;
+  let counter = 1;
+
+  // Check if slug exists and make it unique
+  while (true) {
+    const { data: existing } = await supabase
+      .from("events")
+      .select("id")
+      .eq("slug", slug)
+      .single();
+
+    if (!existing) break;
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
 
   const { data, error } = await supabase
     .from("events")
     .insert({
       title: eventData.title,
+      slug: slug,
       description: eventData.description,
       organizer_id: eventData.organizer_id,
       category_id: eventData.category_id,
       event_date: eventData.event_date,
+      end_date: eventData.end_date,
       location: eventData.location,
       max_participants: eventData.max_participants,
       registration_deadline: eventData.registration_deadline,
@@ -75,7 +109,8 @@ export async function createEvent(eventData: {
       featured_image: eventData.featured_image,
       status: eventData.status || "upcoming",
     })
-    .select(`
+    .select(
+      `
       *,
       profiles:organizer_id (
         id,
@@ -88,22 +123,23 @@ export async function createEvent(eventData: {
         name,
         color
       )
-    `)
-    .single()
+    `
+    )
+    .single();
 
   if (error) {
-    return { event: null, error: error.message }
+    return { event: null, error: error.message };
   }
 
-  return { event: transformEventData(data), error: null }
+  return { event: transformEventData(data), error: null };
 }
 
 // Update an event
 export async function updateEvent(
   id: string,
-  updates: Partial<EventUpdate>,
+  updates: Partial<EventUpdate>
 ): Promise<{ event: Event | null; error: string | null }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("events")
@@ -112,7 +148,8 @@ export async function updateEvent(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .select(`
+    .select(
+      `
       *,
       profiles:organizer_id (
         id,
@@ -125,23 +162,27 @@ export async function updateEvent(
         name,
         color
       )
-    `)
-    .single()
+    `
+    )
+    .single();
 
   if (error) {
-    return { event: null, error: error.message }
+    return { event: null, error: error.message };
   }
 
-  return { event: transformEventData(data), error: null }
+  return { event: transformEventData(data), error: null };
 }
 
 // Get event by ID
-export async function getEventById(id: string): Promise<{ event: Event | null; error: string | null }> {
-  const supabase = createClient()
+export async function getEventById(
+  id: string
+): Promise<{ event: Event | null; error: string | null }> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("events")
-    .select(`
+    .select(
+      `
       *,
       profiles:organizer_id (
         id,
@@ -154,24 +195,28 @@ export async function getEventById(id: string): Promise<{ event: Event | null; e
         name,
         color
       )
-    `)
+    `
+    )
     .eq("id", id)
-    .single()
+    .single();
 
   if (error) {
-    return { event: null, error: error.message }
+    return { event: null, error: error.message };
   }
 
-  return { event: transformEventData(data), error: null }
+  return { event: transformEventData(data), error: null };
 }
 
 // Get events by organizer
-export async function getEventsByOrganizer(organizerId: string): Promise<{ events: Event[]; error: string | null }> {
-  const supabase = createClient()
+export async function getEventsByOrganizer(
+  organizerId: string
+): Promise<{ events: Event[]; error: string | null }> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("events")
-    .select(`
+    .select(
+      `
       *,
       profiles:organizer_id (
         id,
@@ -184,24 +229,29 @@ export async function getEventsByOrganizer(organizerId: string): Promise<{ event
         name,
         color
       )
-    `)
+    `
+    )
     .eq("organizer_id", organizerId)
-    .order("event_date", { ascending: true })
+    .order("event_date", { ascending: true });
 
   if (error) {
-    return { events: [], error: error.message }
+    return { events: [], error: error.message };
   }
 
-  return { events: data.map(transformEventData), error: null }
+  return { events: data.map(transformEventData), error: null };
 }
 
 // Get all events
-export async function getAllEvents(): Promise<{ events: Event[]; error: string | null }> {
-  const supabase = createClient()
+export async function getAllEvents(): Promise<{
+  events: Event[];
+  error: string | null;
+}> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("events")
-    .select(`
+    .select(
+      `
       *,
       profiles:organizer_id (
         id,
@@ -214,23 +264,28 @@ export async function getAllEvents(): Promise<{ events: Event[]; error: string |
         name,
         color
       )
-    `)
-    .order("event_date", { ascending: true })
+    `
+    )
+    .order("event_date", { ascending: true });
 
   if (error) {
-    return { events: [], error: error.message }
+    return { events: [], error: error.message };
   }
 
-  return { events: data.map(transformEventData), error: null }
+  return { events: data.map(transformEventData), error: null };
 }
 
 // Get upcoming events
-export async function getUpcomingEvents(): Promise<{ events: Event[]; error: string | null }> {
-  const supabase = createClient()
+export async function getUpcomingEvents(): Promise<{
+  events: Event[];
+  error: string | null;
+}> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("events")
-    .select(`
+    .select(
+      `
       *,
       profiles:organizer_id (
         id,
@@ -243,25 +298,29 @@ export async function getUpcomingEvents(): Promise<{ events: Event[]; error: str
         name,
         color
       )
-    `)
+    `
+    )
     .gte("event_date", new Date().toISOString())
     .eq("status", "upcoming")
-    .order("event_date", { ascending: true })
+    .order("event_date", { ascending: true });
 
   if (error) {
-    return { events: [], error: error.message }
+    return { events: [], error: error.message };
   }
 
-  return { events: data.map(transformEventData), error: null }
+  return { events: data.map(transformEventData), error: null };
 }
 
 // Get events by category
-export async function getEventsByCategory(categoryId: string): Promise<{ events: Event[]; error: string | null }> {
-  const supabase = createClient()
+export async function getEventsByCategory(
+  categoryId: string
+): Promise<{ events: Event[]; error: string | null }> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("events")
-    .select(`
+    .select(
+      `
       *,
       profiles:organizer_id (
         id,
@@ -274,24 +333,28 @@ export async function getEventsByCategory(categoryId: string): Promise<{ events:
         name,
         color
       )
-    `)
+    `
+    )
     .eq("category_id", categoryId)
-    .order("event_date", { ascending: true })
+    .order("event_date", { ascending: true });
 
   if (error) {
-    return { events: [], error: error.message }
+    return { events: [], error: error.message };
   }
 
-  return { events: data.map(transformEventData), error: null }
+  return { events: data.map(transformEventData), error: null };
 }
 
 // Search events
-export async function searchEvents(query: string): Promise<{ events: Event[]; error: string | null }> {
-  const supabase = createClient()
+export async function searchEvents(
+  query: string
+): Promise<{ events: Event[]; error: string | null }> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("events")
-    .select(`
+    .select(
+      `
       *,
       profiles:organizer_id (
         id,
@@ -304,23 +367,26 @@ export async function searchEvents(query: string): Promise<{ events: Event[]; er
         name,
         color
       )
-    `)
-    .or(`title.ilike.%${query}%,description.ilike.%${query}%,location.ilike.%${query}%`)
-    .order("event_date", { ascending: true })
+    `
+    )
+    .or(
+      `title.ilike.%${query}%,description.ilike.%${query}%,location.ilike.%${query}%`
+    )
+    .order("event_date", { ascending: true });
 
   if (error) {
-    return { events: [], error: error.message }
+    return { events: [], error: error.message };
   }
 
-  return { events: data.map(transformEventData), error: null }
+  return { events: data.map(transformEventData), error: null };
 }
 
 // Register for event
 export async function registerForEvent(
   eventId: string,
-  userId: string,
+  userId: string
 ): Promise<{ registration: EventRegistration | null; error: string | null }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   // Check if already registered
   const { data: existingRegistration } = await supabase
@@ -328,10 +394,10 @@ export async function registerForEvent(
     .select("id")
     .eq("event_id", eventId)
     .eq("user_id", userId)
-    .single()
+    .single();
 
   if (existingRegistration) {
-    return { registration: null, error: "Already registered for this event" }
+    return { registration: null, error: "Already registered for this event" };
   }
 
   // Check if event is full
@@ -339,10 +405,14 @@ export async function registerForEvent(
     .from("events")
     .select("max_participants, current_participants")
     .eq("id", eventId)
-    .single()
+    .single();
 
-  if (event && event.max_participants && event.current_participants >= event.max_participants) {
-    return { registration: null, error: "Event is full" }
+  if (
+    event &&
+    event.max_participants &&
+    event.current_participants >= event.max_participants
+  ) {
+    return { registration: null, error: "Event is full" };
   }
 
   // Register for event
@@ -354,85 +424,94 @@ export async function registerForEvent(
       status: "registered",
     })
     .select()
-    .single()
+    .single();
 
   if (error) {
-    return { registration: null, error: error.message }
+    return { registration: null, error: error.message };
   }
 
   // Increment current participants
-  await supabase.rpc("increment_event_participants", { event_id: eventId })
+  await supabase.rpc("increment_event_participants", { event_id: eventId });
 
-  return { registration: data, error: null }
+  return { registration: data, error: null };
 }
 
 // Cancel event registration
-export async function cancelEventRegistration(eventId: string, userId: string): Promise<{ error: string | null }> {
-  const supabase = createClient()
+export async function cancelEventRegistration(
+  eventId: string,
+  userId: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
 
-  const { error } = await supabase.from("event_registrations").delete().eq("event_id", eventId).eq("user_id", userId)
+  const { error } = await supabase
+    .from("event_registrations")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("user_id", userId);
 
   if (error) {
-    return { error: error.message }
+    return { error: error.message };
   }
 
   // Decrement current participants
-  await supabase.rpc("decrement_event_participants", { event_id: eventId })
+  await supabase.rpc("decrement_event_participants", { event_id: eventId });
 
-  return { error: null }
+  return { error: null };
 }
 
 // Get user's event registrations
 export async function getUserEventRegistrations(
-  userId: string,
+  userId: string
 ): Promise<{ registrations: EventRegistration[]; error: string | null }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("event_registrations")
     .select("*")
     .eq("user_id", userId)
-    .order("registration_date", { ascending: false })
+    .order("registration_date", { ascending: false });
 
   if (error) {
-    return { registrations: [], error: error.message }
+    return { registrations: [], error: error.message };
   }
 
-  return { registrations: data, error: null }
+  return { registrations: data, error: null };
 }
 
 // Check if user is registered for event
 export async function isUserRegisteredForEvent(
   eventId: string,
-  userId: string,
+  userId: string
 ): Promise<{ registered: boolean; error: string | null }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("event_registrations")
     .select("id")
     .eq("event_id", eventId)
     .eq("user_id", userId)
-    .single()
+    .single();
 
   if (error && error.code !== "PGRST116") {
-    return { registered: false, error: error.message }
+    return { registered: false, error: error.message };
   }
 
-  return { registered: !!data, error: null }
+  return { registered: !!data, error: null };
 }
 
 // Delete event
-export async function deleteEvent(id: string): Promise<{ error: string | null }> {
-  const supabase = createClient()
+export async function deleteEvent(
+  id: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
 
-  const { error } = await supabase.from("events").delete().eq("id", id)
+  const { error } = await supabase.from("events").delete().eq("id", id);
 
   if (error) {
-    return { error: error.message }
+    return { error: error.message };
   }
 
-  return { error: null }
+  return { error: null };
 }
 
 // Helper function to transform database data to Event interface
@@ -468,5 +547,5 @@ function transformEventData(data: any): Event {
     status: data.status,
     created_at: data.created_at,
     updated_at: data.updated_at,
-  }
+  };
 }
