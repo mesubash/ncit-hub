@@ -36,12 +36,25 @@ export async function generateMetadata({ params }: BlogPageProps) {
 }
 
 export async function generateStaticParams() {
-  const { blogs } = await getAllBlogs("published")
+  try {
+    const { blogs } = await getAllBlogs("published")
 
-  return blogs.map((blog) => ({
-    id: blog.id,
-  }))
+    if (!blogs || blogs.length === 0) {
+      return []
+    }
+
+    return blogs.map((blog) => ({
+      id: blog.id,
+    }))
+  } catch (error) {
+    console.error("Error generating static params:", error)
+    // Return empty array to allow build to continue
+    return []
+  }
 }
+
+// Allow dynamic params (for blogs created after build)
+export const dynamicParams = true
 
 export default async function BlogPage({ params }: BlogPageProps) {
   const { blog, error } = await getBlogByIdServer(params.id)
