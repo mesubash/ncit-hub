@@ -15,11 +15,10 @@ import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { createEvent } from "@/lib/events"
+import { getCategories, type CategoryRow } from "@/lib/blog"
 import Link from "next/link"
 import { ArrowLeft, Save, Eye, X, Calendar, MapPin, Clock, Loader2 } from "lucide-react"
-import { useState } from "react"
-
-const categories = ["Academic", "Career", "Cultural", "Sports", "Workshop", "Social", "Networking"]
+import { useState, useEffect } from "react"
 
 export default function NewEventPage() {
   const [title, setTitle] = useState("")
@@ -34,10 +33,35 @@ export default function NewEventPage() {
   const [newTag, setNewTag] = useState("")
   const [status, setStatus] = useState("upcoming")
   const [isLoading, setIsLoading] = useState(false)
+  const [categories, setCategories] = useState<CategoryRow[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
   
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  const loadCategories = async () => {
+    try {
+      const { categories: cats, error } = await getCategories()
+      if (!error && cats) {
+        setCategories(cats)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load categories",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to load categories:", error)
+    } finally {
+      setCategoriesLoading(false)
+    }
+  }
 
   const addTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {

@@ -17,6 +17,7 @@ import { Loader2, ArrowLeft, CheckCircle2, X, GraduationCap, Briefcase, Eye, Eye
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Bachelor Engineering Programs
 const bachelorEngineeringDepts = [
@@ -82,6 +83,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const router = useRouter()
   const { refreshUser } = useAuth()
   const { toast } = useToast()
@@ -652,7 +654,42 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-11 text-base" disabled={isLoading || !isFormValid()}>
+              {/* Terms and Privacy Policy Checkbox */}
+              <div className="flex items-start space-x-3 p-4 bg-muted/30 rounded-lg">
+                <Checkbox 
+                  id="terms" 
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+                  className="mt-1"
+                />
+                <label
+                  htmlFor="terms"
+                  className="text-sm leading-relaxed cursor-pointer"
+                >
+                  I have read and agree to the{" "}
+                  <Link 
+                    href="/terms" 
+                    target="_blank"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Terms of Service
+                  </Link>
+                  {" "}and{" "}
+                  <Link 
+                    href="/privacy" 
+                    target="_blank"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Privacy Policy
+                  </Link>
+                </label>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-11 text-base" 
+                disabled={isLoading || !isFormValid() || !acceptedTerms}
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
