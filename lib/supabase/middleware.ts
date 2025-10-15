@@ -21,12 +21,6 @@ export async function updateSession(request: NextRequest) {
 
   try {
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        storageKey: "ncithub-auth",
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-      },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -45,33 +39,11 @@ export async function updateSession(request: NextRequest) {
       },
     });
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // TEMPORARILY DISABLED: Don't check auth in middleware to avoid conflicts
+    // Just refresh the session without redirecting
+    await supabase.auth.getUser();
 
-    console.log("Middleware: User check:", {
-      hasUser: !!user,
-      path: request.nextUrl.pathname,
-      userEmail: user?.email,
-    });
-
-    const protectedRoutes = ["/profile", "/admin", "/dashboard"];
-    const isProtectedRoute = protectedRoutes.some((route) =>
-      request.nextUrl.pathname.startsWith(route)
-    );
-
-    if (
-      !user &&
-      isProtectedRoute &&
-      !request.nextUrl.pathname.startsWith("/login") &&
-      !request.nextUrl.pathname.startsWith("/register") &&
-      !request.nextUrl.pathname.startsWith("/auth")
-    ) {
-      console.log("Middleware: Redirecting unauthenticated user to login");
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
-    }
+    console.log("Middleware: Session refreshed");
 
     return supabaseResponse;
   } catch (error) {

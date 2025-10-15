@@ -19,26 +19,144 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
   });
 
+  // Load cached user from localStorage
+  const loadCachedUser = (authUserId: string): any | null => {
+    try {
+      const cached = localStorage.getItem(`user_profile_${authUserId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Check if cache is less than 24 hours old
+        const cacheAge = Date.now() - parsed.cachedAt;
+        if (cacheAge < 24 * 60 * 60 * 1000) {
+          console.log("AuthProvider: Using cached profile");
+          return parsed.user;
+        }
+      }
+    } catch (error) {
+      console.warn("AuthProvider: Error loading cached user:", error);
+    }
+    return null;
+  };
+
+  // Save user to localStorage
+  const cacheUser = (authUserId: string, user: any) => {
+    try {
+      localStorage.setItem(`user_profile_${authUserId}`, JSON.stringify({
+        user,
+        cachedAt: Date.now(),
+      }));
+    } catch (error) {
+      console.warn("AuthProvider: Error caching user:", error);
+    }
+  };
+
+  const loadUser = async (authUserId: string, sessionEmail: string) => {
+    console.log("AuthProvider: Loading user profile for:", authUserId);
+    
+    // Try to load from cache first
+    const cachedUser = loadCachedUser(authUserId);
+    
+    if (cachedUser) {
+      // Use cached user immediately for instant UI
+      console.log("AuthProvider: Setting cached user immediately");
+      setAuthState({
+        user: cachedUser,
+        isLoading: false,
+        isAuthenticated: true,
+      });
+    } else {
+      // No cache, create fallback user immediately
+      const fallbackUser = {
+        id: authUserId,
+        email: sessionEmail,
+        name: sessionEmail.split('@')[0],
+        role: "student" as const,
+        department: null,
+        semester: null,
+        bio: null,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      setAuthState({
+        user: fallbackUser,
+        isLoading: false,
+        isAuthenticated: true,
+      });
+    }
+    
+    // Then load fresh profile in the background with a 2-second timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Profile query timeout after 2 seconds')), 2000);
+    });
+    
+    try {
+      const supabase = createClient();
+      console.log("AuthProvider: Loading fresh profile in background...");
+      
+      // Race between the query and timeout
+      const result = await Promise.race([
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", authUserId)
+          .single(),
+        timeoutPromise
+      ]) as any;
+
+      const { data: profile, error: profileError } = result;
+
+      if (profileError) {
+        console.warn("AuthProvider: Profile query failed, keeping current user:", profileError.message);
+        return;
+      }
+
+      if (profile) {
+        console.log("AuthProvider: Fresh profile loaded, updating state and cache");
+        const user = {
+          id: profile.id,
+          email: profile.email,
+          name: profile.full_name,
+          role: profile.role as "student" | "admin",
+          department: profile.department,
+          semester: profile.semester,
+          bio: profile.bio,
+          avatar_url: profile.avatar_url,
+          created_at: profile.created_at,
+          updated_at: profile.updated_at,
+        };
+        
+        // Update state
+        setAuthState({
+          user,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+        
+        // Update cache
+        cacheUser(authUserId, user);
+      }
+    } catch (error) {
+      console.warn("AuthProvider: Background profile load failed, keeping current user:", error);
+    }
+  };
+
   const refreshUser = async () => {
     console.log("AuthProvider: Starting refreshUser...");
     try {
-      console.log("AuthProvider: About to call getCurrentUser...");
       const user = await getCurrentUser();
-      console.log("AuthProvider: getCurrentUser completed");
-      console.log("AuthProvider: User result:", { 
+      console.log("AuthProvider: getCurrentUser result:", { 
         hasUser: !!user,
         email: user?.email,
         role: user?.role,
-        id: user?.id
       });
       
-      console.log("AuthProvider: Setting auth state...");
       setAuthState({
         user,
         isLoading: false,
         isAuthenticated: !!user,
       });
-      console.log("AuthProvider: Auth state set successfully");
     } catch (error) {
       console.error("AuthProvider: Error in refreshUser:", error);
       setAuthState({
@@ -53,6 +171,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log("AuthProvider: Signing out...");
     try {
       await authSignOut();
+      
+      // Clear all cached user profiles from localStorage
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('user_profile_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
       setAuthState({
         user: null,
         isLoading: false,
@@ -64,31 +190,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("AuthProvider: Setting up...");
+    console.log("AuthProvider: Initializing...");
     const supabase = createClient();
 
-    // Get initial session
-    refreshUser();
-
-    // Listen for auth changes
+    // Listen for auth changes FIRST, then get initial session
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: string) => {
-      console.log("AuthProvider: Auth event:", event);
+    } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+      console.log("AuthProvider: Auth state change:", event, {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userEmail: session?.user?.email,
+      });
       
-      if (event === "SIGNED_IN") {
-        await refreshUser();
+      if (event === "INITIAL_SESSION") {
+        // Initial session on page load
+        if (session?.user) {
+          await loadUser(session.user.id, session.user.email || '');
+        } else {
+          setAuthState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+          });
+        }
+      } else if (event === "SIGNED_IN" && session?.user) {
+        // User just signed in
+        await loadUser(session.user.id, session.user.email || '');
       } else if (event === "SIGNED_OUT") {
+        // User signed out
         setAuthState({
           user: null,
           isLoading: false,
           isAuthenticated: false,
         });
+      } else if (event === "TOKEN_REFRESHED" && session?.user) {
+        // Token was refreshed, reload user data
+        await loadUser(session.user.id, session.user.email || '');
+      } else if (event === "USER_UPDATED" && session?.user) {
+        // User data was updated
+        await loadUser(session.user.id, session.user.email || '');
       }
     });
 
     return () => {
-      console.log("AuthProvider: Cleanup");
+      console.log("AuthProvider: Cleaning up subscription");
       subscription.unsubscribe();
     };
   }, []);

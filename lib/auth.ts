@@ -56,37 +56,44 @@ export async function getCurrentUser(): Promise<User | null> {
     const supabase = createClient();
     console.log("getCurrentUser: Created Supabase client");
 
-    // Get current session from Supabase
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
+    // Check if we're on the client side
+    if (typeof window === "undefined") {
+      console.log("getCurrentUser: Running on server side, skipping");
+      return null;
+    }
 
-    console.log("getCurrentUser: Session status:", {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: session?.user?.id,
-      userEmail: session?.user?.email,
-      error: sessionError?.message,
+    console.log("getCurrentUser: About to call getUser()...");
+
+    // Use getUser() instead of getSession() - it validates the JWT and refreshes if needed
+    const {
+      data: { user: authUser },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    console.log("getCurrentUser: getUser() returned!", {
+      hasUser: !!authUser,
+      userId: authUser?.id,
+      userEmail: authUser?.email,
+      error: userError?.message,
     });
 
-    if (sessionError) {
-      console.error("getCurrentUser: Session error:", sessionError);
+    if (userError) {
+      console.error("getCurrentUser: User error:", userError);
       return null;
     }
 
-    if (!session?.user) {
-      console.log("getCurrentUser: No active session or user");
+    if (!authUser) {
+      console.log("getCurrentUser: No authenticated user");
       return null;
     }
 
-    console.log("getCurrentUser: Valid session found, fetching profile...");
+    console.log("getCurrentUser: Valid user found, fetching profile...");
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", session.user.id)
+      .eq("id", authUser.id)
       .single();
 
     console.log("getCurrentUser: Profile fetch result:", {
