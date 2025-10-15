@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Navigation } from "@/components/navigation"
 import { getAllBlogs, getCategories, getUserLikedBlogs, toggleBlogLike, type Blog, type CategoryRow } from "@/lib/blog"
+import { getCommentCount } from "@/lib/comments"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
-import { Search, User, Calendar, ArrowLeft, Heart, MessageCircle, Bookmark, TrendingUp, Loader2 } from "lucide-react"
+import { Search, User, Calendar, ArrowLeft, Heart, MessageCircle, Bookmark, TrendingUp, Loader2, Plus } from "lucide-react"
 
 export default function BlogsPage() {
   const [blogs, setBlogs] = useState<Blog[]>([])
@@ -20,7 +21,8 @@ export default function BlogsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [likedPosts, setLikedPosts] = useState<string[]>([])
   const [bookmarkedPosts, setBookmarkedPosts] = useState<string[]>([])
-  const { user } = useAuth()
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
+  const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
     loadData()
@@ -43,6 +45,8 @@ export default function BlogsPage() {
         console.error("Failed to load blogs:", blogsResult.error)
       } else {
         setBlogs(blogsResult.blogs)
+        // Load comment counts for all blogs
+        loadCommentCounts(blogsResult.blogs)
       }
 
       if (categoriesResult.error) {
@@ -55,6 +59,17 @@ export default function BlogsPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const loadCommentCounts = async (blogs: Blog[]) => {
+    const counts: Record<string, number> = {}
+    await Promise.all(
+      blogs.map(async (blog) => {
+        const { count } = await getCommentCount(blog.id)
+        counts[blog.id] = count
+      })
+    )
+    setCommentCounts(counts)
   }
 
   const loadUserLikes = async () => {
@@ -142,14 +157,12 @@ export default function BlogsPage() {
             </Button>
             
             {/* Role-specific action buttons */}
-            {user && (
+            {isAuthenticated && user ? (
               <div className="flex gap-2">
                 {(user.role === 'student' || user.role === 'faculty') && (
                   <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                     <Link href="/create-blog">
-                      <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
+                      <Plus className="h-4 w-4 mr-2" />
                       Write Your Blog
                     </Link>
                   </Button>
@@ -159,9 +172,7 @@ export default function BlogsPage() {
                   <>
                     <Button asChild variant="outline">
                       <Link href="/create-blog">
-                        <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
+                        <Plus className="h-4 w-4 mr-2" />
                         Write Blog
                       </Link>
                     </Button>
@@ -175,6 +186,15 @@ export default function BlogsPage() {
                     </Button>
                   </>
                 )}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Button asChild variant="outline" className="border-2 border-primary/50">
+                  <Link href="/login">
+                    <User className="h-4 w-4 mr-2" />
+                    Log in to Write Blog
+                  </Link>
+                </Button>
               </div>
             )}
           </div>
@@ -316,6 +336,7 @@ export default function BlogsPage() {
                           <button
                             onClick={() => handleToggleLike(blog.id)}
                             disabled={!user}
+                            title={!user ? "Please log in to like this blog" : ""}
                             className={`flex items-center space-x-1 hover:text-red-500 transition-colors ${
                               likedPosts.includes(blog.id) ? "text-red-500" : ""
                             } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -323,20 +344,21 @@ export default function BlogsPage() {
                             <Heart className={`h-4 w-4 ${likedPosts.includes(blog.id) ? "fill-current" : ""}`} />
                             <span>{blog.likes}</span>
                           </button>
-                          <div className="flex items-center space-x-1">
+                          <div className="flex items-center space-x-1" title="Comments">
                             <MessageCircle className="h-4 w-4" />
-                            <span>0</span>
+                            <span>{commentCounts[blog.id] || 0}</span>
                           </div>
-                          <div className="flex items-center space-x-1">
+                          <div className="flex items-center space-x-1" title="Views">
                             <User className="h-4 w-4" />
                             <span>{blog.views}</span>
                           </div>
                         </div>
                         <button
                           onClick={() => toggleBookmark(blog.id)}
+                          title={!user ? "Please log in to bookmark this blog" : "Bookmark"}
                           className={`hover:text-blue-500 transition-colors ${
                             bookmarkedPosts.includes(blog.id) ? "text-blue-500" : ""
-                          }`}
+                          } ${!user ? "opacity-50" : ""}`}
                         >
                           <Bookmark className={`h-4 w-4 ${bookmarkedPosts.includes(blog.id) ? "fill-current" : ""}`} />
                         </button>

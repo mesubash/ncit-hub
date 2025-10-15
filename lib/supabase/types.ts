@@ -261,6 +261,62 @@ export interface Database {
           status?: "registered" | "attended" | "cancelled";
         };
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type:
+            | "blog_comment"
+            | "blog_like"
+            | "event_reminder"
+            | "registration_confirmation"
+            | "blog_published"
+            | "blog_approved"
+            | "blog_rejected"
+            | "blog_submitted";
+          title: string;
+          message: string;
+          link: string | null;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type:
+            | "blog_comment"
+            | "blog_like"
+            | "event_reminder"
+            | "registration_confirmation"
+            | "blog_published"
+            | "blog_approved"
+            | "blog_rejected"
+            | "blog_submitted";
+          title: string;
+          message: string;
+          link?: string | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?:
+            | "blog_comment"
+            | "blog_like"
+            | "event_reminder"
+            | "registration_confirmation"
+            | "blog_published"
+            | "blog_approved"
+            | "blog_rejected"
+            | "blog_submitted";
+          title?: string;
+          message?: string;
+          link?: string | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+      };
     };
   };
 }

@@ -18,6 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { getEventById, registerForEvent, cancelEventRegistration, isUserRegisteredForEvent, deleteEvent, type Event } from "@/lib/events"
+// TODO: Enable notifications later
+// import { notifyEventRegistration } from "@/lib/notifications"
 import { useAuth } from "@/contexts/auth-context"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -131,6 +133,11 @@ export default function EventDetailPage() {
         } else if (registration) {
           setIsRegistered(true)
           setEvent(prev => prev ? { ...prev, current_participants: prev.current_participants + 1 } : null)
+          
+          // TODO: Enable notifications later
+          // Send notification to user
+          // await notifyEventRegistration(user.id, event.title, event.id, event.event_date)
+          
           toast({
             title: "✅ Registered Successfully!",
             description: `You're registered for "${event.title}"`,

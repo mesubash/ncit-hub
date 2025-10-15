@@ -12,6 +12,8 @@ import { Navigation } from "@/components/navigation"
 import { AdminGuard } from "@/components/admin-guard"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { getPendingBlogs, updateBlog, type Blog } from "@/lib/blog"
+// TODO: Enable notifications later
+// import { notifyBlogApproved, notifyBlogRejected } from "@/lib/notifications"
 import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, Eye, CheckCircle, XCircle, Clock, User, Calendar, Tag, Loader2 } from "lucide-react"
 import {
@@ -67,10 +69,18 @@ export default function AdminReviewPage() {
     setActionLoading(blogId)
 
     try {
+      const blog = pendingBlogs.find(b => b.id === blogId)
+      
       await updateBlog(blogId, {
         status: "published",
         published_at: new Date().toISOString(), // Set publish date
       } as any) // Type assertion to allow published_at
+
+      // TODO: Enable notifications later
+      // Send notification to author
+      // if (blog?.author_id) {
+      //   await notifyBlogApproved(blog.author_id, blog.title, blogId)
+      // }
 
       setPendingBlogs((prev) => prev.filter((blog) => blog.id !== blogId))
       toast({
@@ -101,10 +111,18 @@ export default function AdminReviewPage() {
     setActionLoading(blogId)
 
     try {
+      const blog = pendingBlogs.find(b => b.id === blogId)
+      
       await updateBlog(blogId, {
         status: "archived", // Use archived instead of rejected
         rejection_reason: reason.trim(), // Save the rejection reason
       })
+
+      // TODO: Enable notifications later
+      // Send notification to author
+      // if (blog?.author_id) {
+      //   await notifyBlogRejected(blog.author_id, blog.title, blogId, reason.trim())
+      // }
 
       setPendingBlogs((prev) => prev.filter((blog) => blog.id !== blogId))
       toast({

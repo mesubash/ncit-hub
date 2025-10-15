@@ -106,18 +106,28 @@ CREATE TABLE IF NOT EXISTS public.comments (
     blog_id UUID REFERENCES public.blogs(id) ON DELETE CASCADE,
     parent_id UUID REFERENCES public.comments(id) ON DELETE CASCADE,
     is_edited BOOLEAN DEFAULT FALSE,
+    likes_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     edited_at TIMESTAMP WITH TIME ZONE
 );
 
--- Create likes table
+-- Create likes table (for blog likes)
 CREATE TABLE IF NOT EXISTS public.likes (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     blog_id UUID REFERENCES public.blogs(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, blog_id)
+);
+
+-- Create comment likes table
+CREATE TABLE IF NOT EXISTS public.comment_likes (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    comment_id UUID REFERENCES public.comments(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, comment_id)
 );
 
 -- Create event registrations table
@@ -134,7 +144,7 @@ CREATE TABLE IF NOT EXISTS public.event_registrations (
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-    type TEXT NOT NULL CHECK (type IN ('blog_comment', 'blog_like', 'event_reminder', 'registration_confirmation', 'blog_published')),
+    type TEXT NOT NULL CHECK (type IN ('blog_comment', 'blog_like', 'event_reminder', 'registration_confirmation', 'blog_published', 'blog_approved', 'blog_rejected', 'blog_submitted')),
     title TEXT NOT NULL,
     message TEXT NOT NULL,
     link TEXT,
@@ -154,6 +164,8 @@ CREATE INDEX IF NOT EXISTS idx_events_organizer_id ON public.events(organizer_id
 CREATE INDEX IF NOT EXISTS idx_events_event_date ON public.events(event_date);
 CREATE INDEX IF NOT EXISTS idx_comments_blog_id ON public.comments(blog_id);
 CREATE INDEX IF NOT EXISTS idx_likes_blog_id ON public.likes(blog_id);
+CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id ON public.comment_likes(comment_id);
+CREATE INDEX IF NOT EXISTS idx_comment_likes_user_id ON public.comment_likes(user_id);
 CREATE INDEX IF NOT EXISTS idx_event_registrations_event_id ON public.event_registrations(event_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
@@ -165,6 +177,7 @@ ALTER TABLE public.blogs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.comment_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
@@ -314,6 +327,21 @@ ON public.likes FOR DELETE
 TO authenticated
 USING (auth.uid() = user_id);
 
+-- Comment likes policies
+CREATE POLICY "Comment likes are viewable by everyone"
+ON public.comment_likes FOR SELECT
+USING (true);
+
+CREATE POLICY "Authenticated users can create comment likes"
+ON public.comment_likes FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own comment likes"
+ON public.comment_likes FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
 -- Event registrations policies
 CREATE POLICY "Event registrations are viewable by registrant and admin"
 ON public.event_registrations FOR SELECT
@@ -342,6 +370,16 @@ ON public.notifications FOR UPDATE
 TO authenticated
 USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can delete their own notifications"
+ON public.notifications FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Authenticated users can create notifications"
+ON public.notifications FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
 -- Helper functions
 CREATE OR REPLACE FUNCTION increment_blog_views(blog_id UUID)
 RETURNS void AS $$
@@ -367,6 +405,24 @@ BEGIN
   UPDATE public.blogs 
   SET likes = GREATEST(likes - 1, 0)
   WHERE id = blog_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION increment_comment_likes(comment_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.comments 
+  SET likes_count = likes_count + 1 
+  WHERE id = comment_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION decrement_comment_likes(comment_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.comments 
+  SET likes_count = GREATEST(likes_count - 1, 0)
+  WHERE id = comment_id;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator"
 import { SEOHead } from "@/components/seo-head"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Calendar, Clock, Share2, BookmarkPlus, Heart } from "lucide-react"
+import { ArrowLeft, Calendar, Clock } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { getBlogByIdServer } from "@/lib/blog-server"
 import { getAllBlogs } from "@/lib/blog"
@@ -14,6 +14,7 @@ import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getCurrentUserServer } from "@/lib/auth-server"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
+import { BlogInteractions } from "@/components/blog-interactions"
 
 interface BlogPageProps {
   params: {
@@ -123,20 +124,6 @@ export default async function BlogPage({ params }: BlogPageProps) {
                   </div>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm">
-                  <Heart className="h-4 w-4 mr-2" />
-                  {blog.views > 50 ? Math.floor(blog.views / 10) : 0}
-                </Button>
-                <Button variant="outline" size="sm">
-                  <BookmarkPlus className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </div>
             </div>
           </header>
 
@@ -180,16 +167,13 @@ export default async function BlogPage({ params }: BlogPageProps) {
             </div>
           </div>
 
-          <Separator className="mb-8" />
-
-          {/* Article Stats */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground mb-8">
-            <div className="flex items-center space-x-4">
-              <span>{blog.views} views</span>
-              <span>{Math.floor(blog.views / 10)} likes</span>
-            </div>
-            <div>Published on {new Date(blog.published_at || blog.created_at).toLocaleDateString()}</div>
-          </div>
+          {/* Blog Interactions (Likes & Comments) */}
+          <BlogInteractions
+            blogId={blog.id}
+            initialLikes={blog.likes}
+            blogTitle={blog.title}
+            blogUrl={`/blogs/${blog.id}`}
+          />
         </article>
       </div>
     </>

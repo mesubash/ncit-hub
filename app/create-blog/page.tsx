@@ -20,6 +20,8 @@ import { ImageUpload } from "@/components/image-upload"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { useAuth } from "@/contexts/auth-context"
 import { createBlog, getCategories, generateExcerpt, generateSlug, type CategoryRow } from "@/lib/blog"
+// TODO: Enable notifications later
+// import { notifyAdminBlogSubmitted } from "@/lib/notifications"
 import { ArrowLeft, Save, Send, Loader2, Eye, FileText, Calendar, Type, Hash, BookOpen, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -206,6 +208,33 @@ export default function CreateBlogPage() {
         })
       } else {
         setSuccess("✅ Blog submitted for review successfully!")
+        
+        // TODO: Implement notification system later
+        // Notify admin about new blog submission
+        // console.log("📬 [BLOG SUBMIT] Attempting to notify admin...");
+        // console.log("📬 [BLOG SUBMIT] Blog ID:", result.blog?.id);
+        // console.log("📬 [BLOG SUBMIT] Author:", user.full_name || user.email);
+        
+        // if (result.blog?.id) {
+        //   try {
+        //     const notifyResult = await notifyAdminBlogSubmitted(
+        //       formData.title.trim(),
+        //       user.full_name || user.email,
+        //       result.blog.id
+        //     );
+        //     
+        //     if (notifyResult.error) {
+        //       console.error("❌ [BLOG SUBMIT] Failed to notify admin:", notifyResult.error);
+        //     } else {
+        //       console.log("✅ [BLOG SUBMIT] Admin notified successfully!");
+        //     }
+        //   } catch (notifyError) {
+        //     console.error("❌ [BLOG SUBMIT] Exception notifying admin:", notifyError);
+        //   }
+        // } else {
+        //   console.error("❌ [BLOG SUBMIT] No blog ID returned from createBlog");
+        // }
+        
         toast({
           title: "✅ Blog Submitted!",
           description: "Your blog has been submitted to admin for review. You'll be notified once it's published.",

@@ -4,6 +4,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
+// TODO: Enable notifications later
+// import { NotificationDropdown } from "@/components/notification-dropdown"
 import { Menu, X, User, LogOut, Plus, LayoutDashboard, FileEdit, Calendar, Shield, Sparkles } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
@@ -122,8 +124,11 @@ export function Navigation() {
             <ThemeToggle />
 
             {isAuthenticated && user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <>
+                {/* TODO: Enable notifications later */}
+                {/* <NotificationDropdown /> */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
                     <User className="h-4 w-4" />
                     <span className="hidden sm:inline">{user.full_name || user.email.split('@')[0]}</span>
@@ -207,6 +212,7 @@ export function Navigation() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" size="sm" asChild>
