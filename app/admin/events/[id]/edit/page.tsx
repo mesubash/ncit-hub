@@ -15,8 +15,9 @@ import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Save, Loader2, Trash2, Calendar, MapPin, Clock, Users } from "lucide-react"
+import { ArrowLeft, Save, Loader2, Trash2, Calendar, MapPin, Clock, Users, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 interface EditEventPageProps {
   params: {
@@ -34,6 +35,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   
   // Form data
   const [formData, setFormData] = useState({
@@ -268,20 +270,11 @@ export default function EditEventPage({ params }: EditEventPageProps) {
               </div>
               <Button 
                 variant="destructive" 
-                onClick={handleDelete}
+                onClick={() => setShowDeleteDialog(true)}
                 disabled={isDeleting}
               >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Event
-                  </>
-                )}
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Event
               </Button>
             </div>
           </div>
@@ -520,6 +513,46 @@ export default function EditEventPage({ params }: EditEventPageProps) {
           </form>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-destructive/10 rounded-full">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-4">
+              Are you sure you want to delete <span className="font-semibold text-foreground">"{event?.title}"</span>?
+              <br />
+              <br />
+              This action cannot be undone. All event data, including {event?.current_participants || 0} registrations, will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Event
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminGuard>
   )
 }

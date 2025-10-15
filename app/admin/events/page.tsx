@@ -7,9 +7,19 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Navigation } from "@/components/navigation"
 import { AdminGuard } from "@/components/admin-guard"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { getAllEvents, deleteEvent, type Event } from "@/lib/events"
 import Link from "next/link"
-import { ArrowLeft, Plus, Edit, Trash2, Eye, Search, Calendar, Loader2, Users } from "lucide-react"
+import { ArrowLeft, Plus, Edit, Trash2, Eye, Search, Calendar, Loader2, Users, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -19,6 +29,8 @@ export default function AdminEventsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [eventToDelete, setEventToDelete] = useState<{ id: string; title: string } | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -53,13 +65,16 @@ export default function AdminEventsPage() {
   }
 
   const handleDelete = async (eventId: string, eventTitle: string) => {
-    if (!confirm(`Are you sure you want to delete "${eventTitle}"? This action cannot be undone.`)) {
-      return
-    }
+    setEventToDelete({ id: eventId, title: eventTitle })
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!eventToDelete) return
 
     try {
-      setDeletingId(eventId)
-      const { error } = await deleteEvent(eventId)
+      setDeletingId(eventToDelete.id)
+      const { error } = await deleteEvent(eventToDelete.id)
       
       if (error) {
         toast({
@@ -70,10 +85,10 @@ export default function AdminEventsPage() {
       } else {
         toast({
           title: "✅ Event Deleted",
-          description: `"${eventTitle}" has been deleted successfully.`,
+          description: `"${eventToDelete.title}" has been deleted successfully.`,
         })
         // Remove from local state
-        setEvents(prev => prev.filter(e => e.id !== eventId))
+        setEvents(prev => prev.filter(e => e.id !== eventToDelete.id))
       }
     } catch (error) {
       console.error("Error deleting event:", error)
@@ -84,6 +99,8 @@ export default function AdminEventsPage() {
       })
     } finally {
       setDeletingId(null)
+      setShowDeleteDialog(false)
+      setEventToDelete(null)
     }
   }
 
@@ -386,6 +403,46 @@ export default function AdminEventsPage() {
         </Card>
       </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-destructive/10 rounded-full">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-4">
+              Are you sure you want to delete <span className="font-semibold text-foreground">"{eventToDelete?.title}"</span>?
+              <br />
+              <br />
+              This action cannot be undone. All event data, including {events.find(e => e.id === eventToDelete?.id)?.current_participants || 0} registrations, will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingId}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={!!deletingId}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deletingId ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Event
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminGuard>
   )
 }
