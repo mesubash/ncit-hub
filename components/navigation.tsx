@@ -43,7 +43,12 @@ export function Navigation() {
 
   // Combine navigation items based on role
   const getNavItems = () => {
-    const items = [...publicNavItems]
+    let items = [...publicNavItems]
+    
+    // Remove Contact for admins
+    if (user?.role === 'admin') {
+      items = items.filter(item => item.href !== '/contact')
+    }
     
     if (isAuthenticated && user) {
       if (user.role === "student" || user.role === "faculty") {

@@ -5,74 +5,46 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Navigation } from "@/components/navigation"
 import Link from "next/link"
-import { Calendar, Clock, User, ArrowRight, Plus, LayoutDashboard, Shield } from "lucide-react"
+import { Calendar, Clock, User, ArrowRight, Plus, LayoutDashboard, Shield, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-
-const recentBlogs = [
-  {
-    id: 1,
-    title: "Welcome to NCIT Academic Year 2024",
-    excerpt:
-      "As we begin another exciting year at NCIT, we're thrilled to welcome new students and returning scholars to our vibrant campus in Balkumari, Lalitpur...",
-    author: "Dr. Shashidhar Ram Joshi",
-    date: "2024-01-15",
-    category: "Announcements",
-  },
-  {
-    id: 2,
-    title: "Research Opportunities in AI at NCIT",
-    excerpt:
-      "Our Computer Science department is offering exciting research opportunities for undergraduate students this semester, focusing on AI applications in Nepal...",
-    author: "Prof. Binod Vaidya",
-    date: "2024-01-12",
-    category: "Academics",
-  },
-  {
-    id: 3,
-    title: "Student Life at NCIT: A Comprehensive Guide",
-    excerpt:
-      "College is more than just academics. Here's how to get involved in campus life at NCIT and build lasting connections with fellow Nepalese students...",
-    author: "Rajesh Sharma",
-    date: "2024-01-10",
-    category: "Student Life",
-  },
-]
-
-const upcomingEvents = [
-  {
-    id: 1,
-    title: "NCIT Tech Fest 2024",
-    description:
-      "Annual technology festival featuring student projects, competitions, and industry speakers from Nepal's growing tech sector.",
-    date: "2024-02-15",
-    time: "10:00 AM - 6:00 PM",
-    location: "NCIT Campus, Balkumari",
-    category: "Technology",
-  },
-  {
-    id: 2,
-    title: "Computer Science Symposium",
-    description:
-      "Academic symposium featuring student research presentations and guest speakers from Nepal's IT industry.",
-    date: "2024-02-20",
-    time: "9:00 AM - 5:00 PM",
-    location: "Main Auditorium, NCIT",
-    category: "Academic",
-  },
-  {
-    id: 3,
-    title: "Cultural Night - Nepali Heritage",
-    description:
-      "Celebrate Nepal's rich cultural diversity with traditional performances, food, and cultural exhibitions.",
-    date: "2024-02-25",
-    time: "6:00 PM - 10:00 PM",
-    location: "Student Center, NCIT",
-    category: "Cultural",
-  },
-]
+import { useEffect, useState } from "react"
+import { getAllBlogs, type Blog } from "@/lib/blog"
+import { getAllEvents, type Event } from "@/lib/events"
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
+  const [blogs, setBlogs] = useState<Blog[]>([])
+  const [events, setEvents] = useState<Event[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      const [blogsResult, eventsResult] = await Promise.all([
+        getAllBlogs("published"),
+        getAllEvents()
+      ])
+
+      if (!blogsResult.error && blogsResult.blogs) {
+        setBlogs(blogsResult.blogs.slice(0, 3)) // Get latest 3 blogs
+      }
+
+      if (!eventsResult.error && eventsResult.events) {
+        // Filter upcoming events
+        const upcoming = eventsResult.events
+          .filter(event => new Date(event.event_date) > new Date())
+          .slice(0, 3)
+        setEvents(upcoming)
+      }
+    } catch (error) {
+      console.error("Failed to load data:", error)
+    } finally {
+      setIsLoadingData(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -273,28 +245,43 @@ export default function HomePage() {
               </Link>
             </Button>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recentBlogs.map((blog) => (
-              <Card key={blog.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge variant="secondary">{blog.category}</Badge>
-                    <span className="text-sm text-muted-foreground">{blog.date}</span>
-                  </div>
-                  <CardTitle className="text-xl hover:text-primary transition-colors">
-                    <Link href={`/blogs/${blog.id}`}>{blog.title}</Link>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="mb-4 line-clamp-3">{blog.excerpt}</CardDescription>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <User className="h-4 w-4 mr-1" />
-                    {blog.author}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          
+          {isLoadingData ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : blogs.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No blogs available yet
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {blogs.map((blog) => (
+                <Card key={blog.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge variant="secondary">{blog.category?.name || "Uncategorized"}</Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(blog.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <CardTitle className="text-xl hover:text-primary transition-colors">
+                      <Link href={`/blogs/${blog.id}`}>{blog.title}</Link>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="mb-4 line-clamp-3">
+                      {blog.excerpt || "No excerpt available"}
+                    </CardDescription>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <User className="h-4 w-4 mr-1" />
+                      {blog.author?.full_name || "Unknown"}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -309,34 +296,43 @@ export default function HomePage() {
               </Link>
             </Button>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {upcomingEvents.map((event) => (
-              <Card key={event.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge variant="outline">{event.category}</Badge>
-                    <div className="text-right">
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {event.date}
-                      </div>
-                      <div className="flex items-center text-sm text-muted-foreground mt-1">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {event.time}
+          
+          {isLoadingData ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No upcoming events available
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {events.map((event) => (
+                <Card key={event.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge variant="outline">{event.category?.name || "Event"}</Badge>
+                      <div className="text-sm text-muted-foreground text-right">
+                        <div className="flex items-center justify-end">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {new Date(event.event_date).toLocaleDateString()}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <CardTitle className="text-xl hover:text-primary transition-colors">
-                    <Link href={`/events/${event.id}`}>{event.title}</Link>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="mb-4">{event.description}</CardDescription>
-                  <div className="text-sm text-muted-foreground">📍 {event.location}</div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <CardTitle className="text-xl hover:text-primary transition-colors">
+                      <Link href={`/events/${event.id}`}>{event.title}</Link>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="mb-4 line-clamp-3">
+                      {event.description}
+                    </CardDescription>
+                    <div className="text-sm text-muted-foreground">📍 {event.location}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
