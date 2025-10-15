@@ -33,15 +33,19 @@ export default function ProfilePage() {
   })
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    console.log("Profile page auth check:", { isLoading, isAuthenticated, hasUser: !!user });
+    
+    // Only redirect if we're sure the auth state has loaded and user is not authenticated
+    if (!isLoading && !isAuthenticated && !user) {
+      console.log("Redirecting to login from profile page - no user found");
       router.push("/login")
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, user, router])
 
   useEffect(() => {
     if (user) {
       setProfileData({
-        name: user.name,
+        name: user.name || "",
         email: user.email,
       })
       loadUserBlogs()
@@ -52,8 +56,10 @@ export default function ProfilePage() {
     if (!user) return
 
     try {
-      const blogs = await getBlogsByAuthor(user.id)
-      setUserBlogs(blogs)
+      const result = await getBlogsByAuthor(user.id)
+      if (result.blogs) {
+        setUserBlogs(result.blogs)
+      }
     } catch (error) {
       console.error("Failed to load user blogs:", error)
     } finally {
@@ -83,7 +89,7 @@ export default function ProfilePage() {
         return <CheckCircle className="h-4 w-4 text-green-600" />
       case "pending":
         return <Clock className="h-4 w-4 text-yellow-600" />
-      case "rejected":
+      case "archived":
         return <XCircle className="h-4 w-4 text-red-600" />
       case "draft":
         return <Edit className="h-4 w-4 text-gray-600" />
@@ -98,7 +104,7 @@ export default function ProfilePage() {
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-      case "rejected":
+      case "archived":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
       case "draft":
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100"
@@ -206,7 +212,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Member Since</p>
-                <p className="font-semibold">{new Date(user.createdAt).toLocaleDateString()}</p>
+                <p className="font-semibold">{new Date(user.created_at).toLocaleDateString()}</p>
               </div>
             </div>
           </CardContent>
@@ -289,7 +295,9 @@ export default function ProfilePage() {
                     </div>
                     <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{blog.excerpt}</p>
                     <div className="flex items-center space-x-2 mb-3">
-                      <Badge variant="outline">{blog.category}</Badge>
+                      {blog.category && (
+                        <Badge variant="outline">{blog.category.name}</Badge>
+                      )}
                       {blog.tags.slice(0, 3).map((tag) => (
                         <Badge key={tag} variant="outline" className="text-xs">
                           {tag}
@@ -301,7 +309,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <span>Created: {new Date(blog.createdAt).toLocaleDateString()}</span>
+                        <span>Created: {new Date(blog.created_at).toLocaleDateString()}</span>
                         {blog.status === "published" && (
                           <span className="flex items-center">
                             <Eye className="h-4 w-4 mr-1" />
@@ -318,7 +326,7 @@ export default function ProfilePage() {
                             </Link>
                           </Button>
                         )}
-                        {(blog.status === "rejected" || blog.status === "pending" || blog.status === "draft") && (
+                        {(blog.status === "archived" || blog.status === "pending" || blog.status === "draft") && (
                           <Button size="sm" variant="ghost" asChild>
                             <Link href={`/edit-blog/${blog.id}`}>
                               <Edit className="h-4 w-4 mr-1" />
@@ -328,10 +336,10 @@ export default function ProfilePage() {
                         )}
                       </div>
                     </div>
-                    {blog.status === "rejected" && blog.rejectionReason && (
+                    {blog.status === "archived" && (
                       <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
                         <p className="text-sm text-red-800 dark:text-red-200">
-                          <strong>Rejection Reason:</strong> {blog.rejectionReason}
+                          <strong>Note:</strong> This blog has been archived and is no longer visible to the public.
                         </p>
                       </div>
                     )}

@@ -1,55 +1,61 @@
-import { createClient } from "@/lib/supabase/client"
-import type { Database } from "@/lib/supabase/types"
+import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/types";
 
-export type BlogRow = Database["public"]["Tables"]["blogs"]["Row"]
-export type BlogInsert = Database["public"]["Tables"]["blogs"]["Insert"]
-export type BlogUpdate = Database["public"]["Tables"]["blogs"]["Update"]
-export type CategoryRow = Database["public"]["Tables"]["categories"]["Row"]
+export type BlogRow = Database["public"]["Tables"]["blogs"]["Row"];
+export type BlogInsert = Database["public"]["Tables"]["blogs"]["Insert"];
+export type BlogUpdate = Database["public"]["Tables"]["blogs"]["Update"];
+export type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
 
 // Enhanced Blog interface with author details
 export interface Blog {
-  id: string
-  title: string
-  content: string
-  excerpt: string | null
-  author_id: string
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  author_id: string;
   author?: {
-    id: string
-    full_name: string | null
-    email: string
-    avatar_url: string | null
-  }
-  category_id: string | null
+    id: string;
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  };
+  category_id: string | null;
   category?: {
-    id: string
-    name: string
-    color: string
-  }
-  tags: string[]
-  images: string[]
-  featured_image: string | null
-  status: "draft" | "published" | "archived" | "pending"
-  views: number
-  likes: number
-  created_at: string
-  updated_at: string
+    id: string;
+    name: string;
+    color: string;
+  };
+  tags: string[];
+  images: string[];
+  featured_image: string | null;
+  status: "draft" | "published" | "archived" | "pending";
+  views: number;
+  likes: number;
+  created_at: string;
+  updated_at: string;
 }
 
-export const blogCategories = ["Academic", "Sports", "Cultural", "Technical", "General"]
+export const blogCategories = [
+  "Academic",
+  "Sports",
+  "Cultural",
+  "Technical",
+  "General",
+];
 
 // Create a new blog
 export async function createBlog(blogData: {
-  title: string
-  content: string
-  excerpt?: string
-  author_id: string
-  category_id?: string
-  tags?: string[]
-  images?: string[]
-  featured_image?: string
-  status?: "draft" | "published" | "archived" | "pending"
+  title: string;
+  content: string;
+  excerpt?: string;
+  author_id: string;
+  category_id?: string;
+  tags?: string[];
+  images?: string[];
+  featured_image?: string;
+  status?: "draft" | "published" | "archived" | "pending";
 }): Promise<{ blog: Blog | null; error: string | null }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("blogs")
@@ -64,7 +70,8 @@ export async function createBlog(blogData: {
       featured_image: blogData.featured_image,
       status: blogData.status || "draft",
     })
-    .select(`
+    .select(
+      `
       *,
       profiles:author_id (
         id,
@@ -77,22 +84,23 @@ export async function createBlog(blogData: {
         name,
         color
       )
-    `)
-    .single()
+    `
+    )
+    .single();
 
   if (error) {
-    return { blog: null, error: error.message }
+    return { blog: null, error: error.message };
   }
 
-  return { blog: transformBlogData(data), error: null }
+  return { blog: transformBlogData(data), error: null };
 }
 
 // Update a blog
 export async function updateBlog(
   id: string,
-  updates: Partial<BlogUpdate>,
+  updates: Partial<BlogUpdate>
 ): Promise<{ blog: Blog | null; error: string | null }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("blogs")
@@ -101,7 +109,8 @@ export async function updateBlog(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .select(`
+    .select(
+      `
       *,
       profiles:author_id (
         id,
@@ -114,23 +123,27 @@ export async function updateBlog(
         name,
         color
       )
-    `)
-    .single()
+    `
+    )
+    .single();
 
   if (error) {
-    return { blog: null, error: error.message }
+    return { blog: null, error: error.message };
   }
 
-  return { blog: transformBlogData(data), error: null }
+  return { blog: transformBlogData(data), error: null };
 }
 
 // Get blog by ID
-export async function getBlogById(id: string): Promise<{ blog: Blog | null; error: string | null }> {
-  const supabase = createClient()
+export async function getBlogById(
+  id: string
+): Promise<{ blog: Blog | null; error: string | null }> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("blogs")
-    .select(`
+    .select(
+      `
       *,
       profiles:author_id (
         id,
@@ -143,24 +156,28 @@ export async function getBlogById(id: string): Promise<{ blog: Blog | null; erro
         name,
         color
       )
-    `)
+    `
+    )
     .eq("id", id)
-    .single()
+    .single();
 
   if (error) {
-    return { blog: null, error: error.message }
+    return { blog: null, error: error.message };
   }
 
-  return { blog: transformBlogData(data), error: null }
+  return { blog: transformBlogData(data), error: null };
 }
 
 // Get blogs by author
-export async function getBlogsByAuthor(authorId: string): Promise<{ blogs: Blog[]; error: string | null }> {
-  const supabase = createClient()
+export async function getBlogsByAuthor(
+  authorId: string
+): Promise<{ blogs: Blog[]; error: string | null }> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("blogs")
-    .select(`
+    .select(
+      `
       *,
       profiles:author_id (
         id,
@@ -173,24 +190,31 @@ export async function getBlogsByAuthor(authorId: string): Promise<{ blogs: Blog[
         name,
         color
       )
-    `)
+    `
+    )
     .eq("author_id", authorId)
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (error) {
-    return { blogs: [], error: error.message }
+    return { blogs: [], error: error.message };
   }
 
-  return { blogs: data.map(transformBlogData), error: null }
+  return { blogs: data.map(transformBlogData), error: null };
 }
 
-// Get all published blogs
-export async function getAllBlogs(): Promise<{ blogs: Blog[]; error: string | null }> {
-  const supabase = createClient()
+// Get all blogs with optional status filter
+export async function getAllBlogs(
+  status?: "published" | "draft" | "pending" | "archived"
+): Promise<{
+  blogs: Blog[];
+  error: string | null;
+}> {
+  const supabase = createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("blogs")
-    .select(`
+    .select(
+      `
       *,
       profiles:author_id (
         id,
@@ -203,24 +227,33 @@ export async function getAllBlogs(): Promise<{ blogs: Blog[]; error: string | nu
         name,
         color
       )
-    `)
-    .eq("status", "published")
-    .order("created_at", { ascending: false })
+    `
+    )
+    .order("created_at", { ascending: false });
 
-  if (error) {
-    return { blogs: [], error: error.message }
+  if (status) {
+    query = query.eq("status", status);
   }
 
-  return { blogs: data.map(transformBlogData), error: null }
+  const { data, error } = await query;
+
+  if (error) {
+    return { blogs: [], error: error.message };
+  }
+
+  return { blogs: data.map(transformBlogData), error: null };
 }
 
 // Get blogs by category
-export async function getBlogsByCategory(categoryId: string): Promise<{ blogs: Blog[]; error: string | null }> {
-  const supabase = createClient()
+export async function getBlogsByCategory(
+  categoryId: string
+): Promise<{ blogs: Blog[]; error: string | null }> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("blogs")
-    .select(`
+    .select(
+      `
       *,
       profiles:author_id (
         id,
@@ -233,25 +266,29 @@ export async function getBlogsByCategory(categoryId: string): Promise<{ blogs: B
         name,
         color
       )
-    `)
+    `
+    )
     .eq("category_id", categoryId)
     .eq("status", "published")
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (error) {
-    return { blogs: [], error: error.message }
+    return { blogs: [], error: error.message };
   }
 
-  return { blogs: data.map(transformBlogData), error: null }
+  return { blogs: data.map(transformBlogData), error: null };
 }
 
 // Search blogs
-export async function searchBlogs(query: string): Promise<{ blogs: Blog[]; error: string | null }> {
-  const supabase = createClient()
+export async function searchBlogs(
+  query: string
+): Promise<{ blogs: Blog[]; error: string | null }> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("blogs")
-    .select(`
+    .select(
+      `
       *,
       profiles:author_id (
         id,
@@ -264,37 +301,42 @@ export async function searchBlogs(query: string): Promise<{ blogs: Blog[]; error
         name,
         color
       )
-    `)
+    `
+    )
     .eq("status", "published")
-    .or(`title.ilike.%${query}%,content.ilike.%${query}%,excerpt.ilike.%${query}%`)
-    .order("created_at", { ascending: false })
+    .or(
+      `title.ilike.%${query}%,content.ilike.%${query}%,excerpt.ilike.%${query}%`
+    )
+    .order("created_at", { ascending: false });
 
   if (error) {
-    return { blogs: [], error: error.message }
+    return { blogs: [], error: error.message };
   }
 
-  return { blogs: data.map(transformBlogData), error: null }
+  return { blogs: data.map(transformBlogData), error: null };
 }
 
 // Increment blog views
-export async function incrementBlogViews(id: string): Promise<{ error: string | null }> {
-  const supabase = createClient()
+export async function incrementBlogViews(
+  id: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
 
-  const { error } = await supabase.rpc("increment_blog_views", { blog_id: id })
+  const { error } = await supabase.rpc("increment_blog_views", { blog_id: id });
 
   if (error) {
-    return { error: error.message }
+    return { error: error.message };
   }
 
-  return { error: null }
+  return { error: null };
 }
 
 // Like/unlike blog
 export async function toggleBlogLike(
   blogId: string,
-  userId: string,
+  userId: string
 ): Promise<{ liked: boolean; error: string | null }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   // Check if already liked
   const { data: existingLike } = await supabase
@@ -302,81 +344,107 @@ export async function toggleBlogLike(
     .select("id")
     .eq("blog_id", blogId)
     .eq("user_id", userId)
-    .single()
+    .single();
 
   if (existingLike) {
     // Unlike
-    const { error } = await supabase.from("likes").delete().eq("blog_id", blogId).eq("user_id", userId)
+    const { error } = await supabase
+      .from("likes")
+      .delete()
+      .eq("blog_id", blogId)
+      .eq("user_id", userId);
 
     if (error) {
-      return { liked: false, error: error.message }
+      return { liked: false, error: error.message };
     }
 
     // Decrement likes count
-    await supabase.rpc("decrement_blog_likes", { blog_id: blogId })
+    await supabase.rpc("decrement_blog_likes", { blog_id: blogId });
 
-    return { liked: false, error: null }
+    return { liked: false, error: null };
   } else {
     // Like
-    const { error } = await supabase.from("likes").insert({ blog_id: blogId, user_id: userId })
+    const { error } = await supabase
+      .from("likes")
+      .insert({ blog_id: blogId, user_id: userId });
 
     if (error) {
-      return { liked: false, error: error.message }
+      return { liked: false, error: error.message };
     }
 
     // Increment likes count
-    await supabase.rpc("increment_blog_likes", { blog_id: blogId })
+    await supabase.rpc("increment_blog_likes", { blog_id: blogId });
 
-    return { liked: true, error: null }
+    return { liked: true, error: null };
   }
 }
 
 // Get user's liked blogs
-export async function getUserLikedBlogs(userId: string): Promise<{ blogIds: string[]; error: string | null }> {
-  const supabase = createClient()
+export async function getUserLikedBlogs(
+  userId: string
+): Promise<{ blogIds: string[]; error: string | null }> {
+  const supabase = createClient();
 
-  const { data, error } = await supabase.from("likes").select("blog_id").eq("user_id", userId)
+  const { data, error } = await supabase
+    .from("likes")
+    .select("blog_id")
+    .eq("user_id", userId);
 
   if (error) {
-    return { blogIds: [], error: error.message }
+    return { blogIds: [], error: error.message };
   }
 
-  return { blogIds: data.map((like) => like.blog_id), error: null }
+  return {
+    blogIds: data.map((like: { blog_id: any }) => like.blog_id),
+    error: null,
+  };
 }
 
 // Get all categories
-export async function getCategories(): Promise<{ categories: CategoryRow[]; error: string | null }> {
-  const supabase = createClient()
+export async function getCategories(): Promise<{
+  categories: CategoryRow[];
+  error: string | null;
+}> {
+  const supabase = createClient();
 
-  const { data, error } = await supabase.from("categories").select("*").order("name")
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name");
 
   if (error) {
-    return { categories: [], error: error.message }
+    return { categories: [], error: error.message };
   }
 
-  return { categories: data, error: null }
+  return { categories: data, error: null };
 }
 
 // Delete blog
-export async function deleteBlog(id: string): Promise<{ error: string | null }> {
-  const supabase = createClient()
+export async function deleteBlog(
+  id: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
 
-  const { error } = await supabase.from("blogs").delete().eq("id", id)
+  const { error } = await supabase.from("blogs").delete().eq("id", id);
 
   if (error) {
-    return { error: error.message }
+    return { error: error.message };
   }
 
-  return { error: null }
+  return { error: null };
 }
 
 // Get all pending blogs for admin review
-export async function getPendingBlogs(): Promise<{ blogs: Blog[]; error: string | null }> {
-  const supabase = createClient()
+export async function getPendingBlogs(): Promise<{
+  blogs: Blog[];
+  error: string | null;
+}> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from("blogs")
-    .select(`
+    .select(
+      `
       *,
       profiles:author_id (
         id,
@@ -389,15 +457,22 @@ export async function getPendingBlogs(): Promise<{ blogs: Blog[]; error: string 
         name,
         color
       )
-    `)
+    `
+    )
     .in("status", ["draft", "pending"])
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (error) {
-    return { blogs: [], error: error.message }
+    return { blogs: [], error: error.message };
   }
 
-  return { blogs: data.map(transformBlogData), error: null }
+  return { blogs: data.map(transformBlogData), error: null };
+}
+
+// Get pending blogs (moved to getAllBlogs with status parameter)
+async function getPendingBlogsLegacy(): Promise<Blog[]> {
+  const { blogs } = await getAllBlogs("pending");
+  return blogs;
 }
 
 // Helper function to transform database data to Blog interface
@@ -432,7 +507,7 @@ function transformBlogData(data: any): Blog {
     likes: data.likes,
     created_at: data.created_at,
     updated_at: data.updated_at,
-  }
+  };
 }
 
 // Generate excerpt from content
@@ -440,7 +515,7 @@ export function generateExcerpt(content: string, maxLength = 150): string {
   const plainText = content
     .replace(/<[^>]*>/g, "")
     .replace(/\s+/g, " ")
-    .trim()
-  if (plainText.length <= maxLength) return plainText
-  return plainText.substring(0, maxLength).trim() + "..."
+    .trim();
+  if (plainText.length <= maxLength) return plainText;
+  return plainText.substring(0, maxLength).trim() + "...";
 }

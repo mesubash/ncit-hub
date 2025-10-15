@@ -54,7 +54,6 @@ export async function getCurrentUser(): Promise<User | null> {
 
   try {
     const supabase = createClient();
-    console.log("getCurrentUser: Created Supabase client");
 
     // Get current session from Supabase
     const {
@@ -62,25 +61,21 @@ export async function getCurrentUser(): Promise<User | null> {
       error: sessionError,
     } = await supabase.auth.getSession();
 
-    console.log("getCurrentUser: Session status:", {
+    console.log("Session status:", {
       hasSession: !!session,
       hasUser: !!session?.user,
-      userId: session?.user?.id,
-      userEmail: session?.user?.email,
       error: sessionError?.message,
     });
 
     if (sessionError) {
-      console.error("getCurrentUser: Session error:", sessionError);
+      console.error("Session error:", sessionError);
       return null;
     }
 
     if (!session?.user) {
-      console.log("getCurrentUser: No active session or user");
+      console.log("No active session");
       return null;
     }
-
-    console.log("getCurrentUser: Valid session found, fetching profile...");
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase
@@ -89,32 +84,23 @@ export async function getCurrentUser(): Promise<User | null> {
       .eq("id", session.user.id)
       .single();
 
-    console.log("getCurrentUser: Profile fetch result:", {
+    console.log("Profile fetch:", {
       hasProfile: !!profile,
-      profileId: profile?.id,
-      profileEmail: profile?.email,
-      profileRole: profile?.role,
       error: profileError?.message,
-      errorCode: profileError?.code,
     });
 
     if (profileError) {
-      console.error("getCurrentUser: Profile error:", profileError);
+      console.error("Profile error:", profileError);
       return null;
     }
 
     if (!profile) {
-      console.log("getCurrentUser: No profile found for user");
+      console.log("No profile found for user");
       return null;
     }
 
     const user = profileToUser(profile);
-    console.log("getCurrentUser: Success! Returning user:", {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    });
+    console.log("getCurrentUser success:", user.email);
     return user;
   } catch (error) {
     console.error("getCurrentUser error:", error);

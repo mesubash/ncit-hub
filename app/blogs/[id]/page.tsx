@@ -18,9 +18,9 @@ interface BlogPageProps {
 }
 
 export async function generateMetadata({ params }: BlogPageProps) {
-  const blog = await getBlogById(params.id)
+  const { blog, error } = await getBlogById(params.id)
 
-  if (!blog) {
+  if (error || !blog) {
     return {
       title: "Blog Not Found | NCIT Hub",
       description: "The requested blog post could not be found.",
@@ -31,18 +31,17 @@ export async function generateMetadata({ params }: BlogPageProps) {
 }
 
 export async function generateStaticParams() {
-  const blogs = await getAllBlogs()
-  const publishedBlogs = blogs.filter((blog) => blog.status === "published")
+  const { blogs } = await getAllBlogs("published")
 
-  return publishedBlogs.map((blog) => ({
+  return blogs.map((blog) => ({
     id: blog.id,
   }))
 }
 
 export default async function BlogPage({ params }: BlogPageProps) {
-  const blog = await getBlogById(params.id)
+  const { blog, error } = await getBlogById(params.id)
 
-  if (!blog || blog.status !== "published") {
+  if (error || !blog || blog.status !== "published") {
     notFound()
   }
 
@@ -81,14 +80,14 @@ export default async function BlogPage({ params }: BlogPageProps) {
               <div className="flex items-center space-x-4">
                 <Avatar>
                   <AvatarFallback>
-                    {blog.author
-                      .split(" ")
+                    {blog.author?.full_name
+                      ?.split(" ")
                       .map((n) => n[0])
-                      .join("")}
+                      .join("") || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium text-foreground">{blog.author}</p>
+                  <p className="font-medium text-foreground">{blog.author?.full_name || "Anonymous"}</p>
                   <div className="flex items-center text-sm text-muted-foreground space-x-4">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-1" />

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Navigation } from "@/components/navigation"
-import { signUp } from "@/lib/auth"
+import { signUp, formatCollegeEmail } from "@/lib/auth"
 import { useAuth } from "@/contexts/auth-context"
 import { Loader2, ArrowLeft } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -24,7 +24,7 @@ const departments = [
   "Architecture",
 ]
 
-const years = [1, 2, 3, 4, 5]
+const semesters = [1, 2, 3, 4, 5, 6, 7, 8]
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -54,6 +54,11 @@ export default function RegisterPage() {
       return
     }
 
+    if (!formData.department || !formData.year) {
+      setError("Department and Year are required")
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -66,10 +71,12 @@ export default function RegisterPage() {
       )
 
       if (error) {
-        setError(error)
-      } else if (user) {
-        await refreshUser()
-        router.push("/profile")
+        // If it's a success message from email verification flow
+        if (error.includes("Registration successful")) {
+          router.push("/login?message=" + encodeURIComponent(error))
+        } else {
+          setError(error)
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred")
@@ -121,20 +128,25 @@ export default function RegisterPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="email">College Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="rajesh.sharma@ncit.edu.np"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">Must be a valid NCIT email address</p>
+                <div className="flex">
+                  <Input
+                    id="email"
+                    type="text"
+                    placeholder="username"
+                    value={formData.email.split("@")[0] || ""}
+                    onChange={(e) => handleInputChange("email", formatCollegeEmail(e.target.value))}
+                    required
+                  />
+                  <div className="flex items-center bg-muted px-3 text-muted-foreground">
+                    @ncit.edu.np
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Enter your NCIT username</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="department">Department (Optional)</Label>
-                <Select value={formData.department} onValueChange={(value) => handleInputChange("department", value)}>
+                <Label htmlFor="department">Department</Label>
+                <Select value={formData.department} onValueChange={(value) => handleInputChange("department", value)} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your department" />
                   </SelectTrigger>
@@ -146,22 +158,24 @@ export default function RegisterPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">Required for better content filtering</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="year">Year (Optional)</Label>
-                <Select value={formData.year} onValueChange={(value) => handleInputChange("year", value)}>
+                <Label htmlFor="semester">Semester</Label>
+                <Select value={formData.year} onValueChange={(value) => handleInputChange("year", value)} required>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select your year" />
+                    <SelectValue placeholder="Select your semester" />
                   </SelectTrigger>
                   <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        Year {year}
+                    {semesters.map((semester) => (
+                      <SelectItem key={semester} value={semester.toString()}>
+                        {semester}{semester === 1 ? "st" : semester === 2 ? "nd" : semester === 3 ? "rd" : "th"} Semester
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">Required for better content filtering</p>
               </div>
 
               <div className="space-y-2">

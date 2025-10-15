@@ -48,86 +48,12 @@ export function profileToUser(profile: Profile): User {
   };
 }
 
-// Clean auth system - check current session
-export async function getCurrentUser(): Promise<User | null> {
-  console.log("getCurrentUser: Starting session check...");
-
-  try {
-    const supabase = createClient();
-    console.log("getCurrentUser: Created Supabase client");
-
-    // Get current session from Supabase
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
-
-    console.log("getCurrentUser: Session status:", {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: session?.user?.id,
-      userEmail: session?.user?.email,
-      error: sessionError?.message,
-    });
-
-    if (sessionError) {
-      console.error("getCurrentUser: Session error:", sessionError);
-      return null;
-    }
-
-    if (!session?.user) {
-      console.log("getCurrentUser: No active session or user");
-      return null;
-    }
-
-    console.log("getCurrentUser: Valid session found, fetching profile...");
-
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", session.user.id)
-      .single();
-
-    console.log("getCurrentUser: Profile fetch result:", {
-      hasProfile: !!profile,
-      profileId: profile?.id,
-      profileEmail: profile?.email,
-      profileRole: profile?.role,
-      error: profileError?.message,
-      errorCode: profileError?.code,
-    });
-
-    if (profileError) {
-      console.error("getCurrentUser: Profile error:", profileError);
-      return null;
-    }
-
-    if (!profile) {
-      console.log("getCurrentUser: No profile found for user");
-      return null;
-    }
-
-    const user = profileToUser(profile);
-    console.log("getCurrentUser: Success! Returning user:", {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    });
-    return user;
-  } catch (error) {
-    console.error("getCurrentUser error:", error);
-    return null;
-  }
-}
-
-// Sign in function
+// Simple sign in function
 export async function signIn(
   email: string,
   password: string
 ): Promise<{ user: User | null; error: string | null }> {
-  console.log("signIn: Starting for", email);
+  console.log("Starting signIn process for email:", email);
 
   if (!isValidCollegeEmail(email)) {
     return {
@@ -136,25 +62,23 @@ export async function signIn(
     };
   }
 
-  try {
-    const supabase = createClient();
+  const supabase = createClient();
 
-    const { data: authData, error: authError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    console.log("Auth response:", { hasUser: !!authData?.user, error: authError?.message });
 
     if (authError) {
-      console.error("Auth error:", authError);
       return { user: null, error: authError.message };
     }
 
-    if (!authData.user || !authData.session) {
+    if (!authData.user) {
       return { user: null, error: "Authentication failed" };
     }
-
-    console.log("Auth successful, fetching profile...");
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase
@@ -163,14 +87,14 @@ export async function signIn(
       .eq("id", authData.user.id)
       .single();
 
+    console.log("Profile fetch:", { hasProfile: !!profile, error: profileError?.message });
+
     if (profileError && profileError.code !== "PGRST116") {
-      console.error("Profile error:", profileError);
       return { user: null, error: "Failed to load user profile" };
     }
 
     if (!profile) {
       // Create profile if it doesn't exist
-      console.log("Creating new profile...");
       const { data: newProfile, error: createError } = await supabase
         .from("profiles")
         .insert([
@@ -187,21 +111,55 @@ export async function signIn(
         .single();
 
       if (createError) {
-        console.error("Profile creation error:", createError);
         return { user: null, error: "Failed to create user profile" };
       }
 
-      const user = profileToUser(newProfile);
-      console.log("signIn success with new profile:", user.email);
-      return { user, error: null };
+      return { user: profileToUser(newProfile), error: null };
+    }
+
+    return { user: profileToUser(profile), error: null };
+  } catch (err) {
+    console.error("SignIn error:", err);
+    return { user: null, error: "An unexpected error occurred" };
+  }
+}
+
+// Simple getCurrentUser function using session
+export async function getCurrentUser(): Promise<User | null> {
+  console.log("getCurrentUser: Starting...");
+  const supabase = createClient();
+
+  try {
+    // Use getSession instead of getUser
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    console.log("Session check:", { hasSession: !!session, hasUser: !!session?.user });
+
+    if (!session?.user) {
+      console.log("No session or user");
+      return null;
+    }
+
+    // Get profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .single();
+
+    console.log("Profile result:", { hasProfile: !!profile });
+
+    if (!profile) {
+      console.log("No profile found");
+      return null;
     }
 
     const user = profileToUser(profile);
-    console.log("signIn success:", user.email);
-    return { user, error: null };
-  } catch (err) {
-    console.error("signIn error:", err);
-    return { user: null, error: "An unexpected error occurred" };
+    console.log("Returning user:", user.email);
+    return user;
+  } catch (error) {
+    console.error("getCurrentUser error:", error);
+    return null;
   }
 }
 
@@ -247,8 +205,7 @@ export async function signUp(
   if (!authData.session) {
     return {
       user: null,
-      error:
-        "Registration successful! Please check your email to verify your account before signing in.",
+      error: "Registration successful! Please check your email to verify your account before signing in.",
     };
   }
 
@@ -272,22 +229,14 @@ export async function signUp(
 
   return {
     user: profileToUser(profile),
-    error:
-      "Registration successful! Please check your email to verify your account before signing in.",
+    error: "Registration successful! Please check your email to verify your account before signing in.",
   };
 }
 
 // Sign out function
 export async function signOut(): Promise<void> {
-  console.log("signOut: Starting...");
   const supabase = createClient();
-  const { error } = await supabase.auth.signOut();
-
-  if (error) {
-    console.error("signOut error:", error);
-  } else {
-    console.log("signOut success");
-  }
+  await supabase.auth.signOut();
 }
 
 // Update user profile
@@ -295,10 +244,8 @@ export async function updateProfile(
   updates: Partial<Profile>
 ): Promise<{ user: User | null; error: string | null }> {
   const supabase = createClient();
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  
+  const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) {
     return { user: null, error: "Not authenticated" };
   }

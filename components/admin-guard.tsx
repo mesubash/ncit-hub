@@ -16,13 +16,22 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push("/login")
-      } else if (user?.role !== "admin") {
-        router.push("/")
+    console.log("AdminGuard auth check:", { isLoading, isAuthenticated, userRole: user?.role });
+    
+    // Add a delay to prevent immediate redirect during auth state updates
+    const redirectTimer = setTimeout(() => {
+      if (!isLoading) {
+        if (!isAuthenticated) {
+          console.log("AdminGuard: Redirecting to login");
+          router.push("/login")
+        } else if (user?.role !== "admin") {
+          console.log("AdminGuard: Redirecting to home - not admin");
+          router.push("/")
+        }
       }
-    }
+    }, 2000); // 2 second delay
+
+    return () => clearTimeout(redirectTimer);
   }, [isAuthenticated, isLoading, user, router])
 
   if (isLoading) {

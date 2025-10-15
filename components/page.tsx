@@ -23,14 +23,14 @@ export default function LoginPage() {
   const router = useRouter()
   const { refreshUser, user, isAuthenticated } = useAuth()
 
-  // Auto-redirect if already authenticated (but not during login process)
+  // Auto-redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated && user && !isLoading) {
+    if (isAuthenticated && user) {
       console.log("Already authenticated, redirecting to appropriate page");
       const redirectPath = user.role === "admin" ? "/admin" : "/profile";
       router.replace(redirectPath);
     }
-  }, [isAuthenticated, user, isLoading, router]);
+  }, [isAuthenticated, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +39,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Sign in with email and password
+      // First attempt at sign in
       console.log("Calling signIn function...")
       const { user: signInUser, error: signInError } = await signIn(email, password)
 
@@ -62,17 +62,42 @@ export default function LoginPage() {
         return
       }
 
-      console.log("Login successful! Redirecting...")
-      
-      // Refresh auth context to get the latest session
+      // Wait for auth state to be updated
+      console.log("Waiting for auth state update...")
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Force refresh of auth state
+      console.log("Refreshing user state...")
       await refreshUser()
       
-      const redirectPath = signInUser.role === "admin" ? "/admin" : "/profile"
-      console.log("Navigating to:", redirectPath)
-      
-      // Navigate using Next.js router
-      router.replace(redirectPath)
+      // Force Next.js to revalidate
+      console.log("Forcing router refresh...")
+      router.refresh()
 
+      // Wait for router refresh
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Redirect based on role
+      const redirectPath = signInUser.role === "admin" ? "/admin" : "/profile"
+      console.log("Attempting navigation to:", redirectPath)
+      
+      // Try multiple navigation approaches
+      try {
+        console.log("Trying router.replace...")
+        await router.replace(redirectPath)
+        console.log("Router.replace completed")
+        
+        // If that doesn't work, try window.location
+        setTimeout(() => {
+          console.log("Fallback: Using window.location.href")
+          window.location.href = redirectPath
+        }, 1000)
+      } catch (navError) {
+        console.error("Navigation error:", navError)
+        // Final fallback
+        console.log("Final fallback: Direct window navigation")
+        window.location.href = redirectPath
+      }
     } catch (err) {
       console.error("Login error:", err)
       setError("An unexpected error occurred. Please try again.")

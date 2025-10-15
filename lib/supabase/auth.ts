@@ -9,7 +9,7 @@ export interface User {
   name: string | null;
   role: "student" | "admin";
   department: string | null;
-  semester: number | null;
+  semester: number | null; // Changed from year to semester
   bio: string | null;
   avatar_url: string | null;
   created_at: string;
@@ -40,7 +40,7 @@ export function profileToUser(profile: Profile): User {
     name: profile.full_name,
     role: profile.role as "student" | "admin",
     department: profile.department,
-    semester: profile.semester,
+    semester: profile.semester, // Changed from year to semester
     bio: profile.bio,
     avatar_url: profile.avatar_url,
     created_at: profile.created_at,
@@ -48,139 +48,75 @@ export function profileToUser(profile: Profile): User {
   };
 }
 
-// Clean auth system - check current session
-export async function getCurrentUser(): Promise<User | null> {
-  console.log("getCurrentUser: Starting session check...");
-
-  try {
-    const supabase = createClient();
-    console.log("getCurrentUser: Created Supabase client");
-
-    // Get current session from Supabase
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
-
-    console.log("getCurrentUser: Session status:", {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: session?.user?.id,
-      userEmail: session?.user?.email,
-      error: sessionError?.message,
-    });
-
-    if (sessionError) {
-      console.error("getCurrentUser: Session error:", sessionError);
-      return null;
-    }
-
-    if (!session?.user) {
-      console.log("getCurrentUser: No active session or user");
-      return null;
-    }
-
-    console.log("getCurrentUser: Valid session found, fetching profile...");
-
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", session.user.id)
-      .single();
-
-    console.log("getCurrentUser: Profile fetch result:", {
-      hasProfile: !!profile,
-      profileId: profile?.id,
-      profileEmail: profile?.email,
-      profileRole: profile?.role,
-      error: profileError?.message,
-      errorCode: profileError?.code,
-    });
-
-    if (profileError) {
-      console.error("getCurrentUser: Profile error:", profileError);
-      return null;
-    }
-
-    if (!profile) {
-      console.log("getCurrentUser: No profile found for user");
-      return null;
-    }
-
-    const user = profileToUser(profile);
-    console.log("getCurrentUser: Success! Returning user:", {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    });
-    return user;
-  } catch (error) {
-    console.error("getCurrentUser error:", error);
-    return null;
-  }
-}
-
-// Sign in function
+// Sign in with Supabase
 export async function signIn(
   email: string,
   password: string
 ): Promise<{ user: User | null; error: string | null }> {
-  console.log("signIn: Starting for", email);
+  console.log("Starting signIn process for email:", email);
 
   if (!isValidCollegeEmail(email)) {
+    console.log("Invalid college email format");
     return {
       user: null,
       error: "Please use your college email (@ncit.edu.np)",
     };
   }
 
+  const supabase = createClient();
+  console.log("Attempting Supabase authentication...");
+
+  const { data: authData, error: authError } =
+    await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+  console.log("Auth response:", {
+    success: !!authData?.user,
+    error: authError?.message,
+    userId: authData?.user?.id,
+  });
+
+  if (authError) {
+    console.log("Authentication error:", authError);
+    return { user: null, error: authError.message };
+  }
+
+  if (!authData.user) {
+    console.log("No user data returned from authentication");
+    return { user: null, error: "Authentication failed" };
+  }
+
   try {
-    const supabase = createClient();
-
-    const { data: authData, error: authError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-    if (authError) {
-      console.error("Auth error:", authError);
-      return { user: null, error: authError.message };
-    }
-
-    if (!authData.user || !authData.session) {
-      return { user: null, error: "Authentication failed" };
-    }
-
-    console.log("Auth successful, fetching profile...");
-
+    console.log("Fetching user profile...");
     // Get user profile
-    const { data: profile, error: profileError } = await supabase
+    const { data: existingProfile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", authData.user.id)
       .single();
 
+    console.log("Profile fetch result:", {
+      success: !!existingProfile,
+      error: profileError?.message,
+    });
+
     if (profileError && profileError.code !== "PGRST116") {
-      console.error("Profile error:", profileError);
+      console.error("Profile fetch error:", profileError);
       return { user: null, error: "Failed to load user profile" };
     }
 
-    if (!profile) {
-      // Create profile if it doesn't exist
-      console.log("Creating new profile...");
+    // If profile doesn't exist, create one
+    if (!existingProfile) {
+      console.log("Creating new profile for user...");
       const { data: newProfile, error: createError } = await supabase
         .from("profiles")
         .insert([
           {
             id: authData.user.id,
-            email: authData.user.email!,
-            full_name: authData.user.user_metadata?.full_name || null,
-            department: authData.user.user_metadata?.department || null,
-            semester: authData.user.user_metadata?.semester || null,
-            role: "student",
+            email: authData.user.email,
+            role: "student", // Default role
           },
         ])
         .select()
@@ -191,21 +127,21 @@ export async function signIn(
         return { user: null, error: "Failed to create user profile" };
       }
 
-      const user = profileToUser(newProfile);
-      console.log("signIn success with new profile:", user.email);
-      return { user, error: null };
+      if (!newProfile) {
+        return { user: null, error: "Failed to create user profile" };
+      }
+
+      return { user: profileToUser(newProfile), error: null };
     }
 
-    const user = profileToUser(profile);
-    console.log("signIn success:", user.email);
-    return { user, error: null };
+    return { user: profileToUser(existingProfile), error: null };
   } catch (err) {
-    console.error("signIn error:", err);
+    console.error("Unexpected error:", err);
     return { user: null, error: "An unexpected error occurred" };
   }
 }
 
-// Sign up function
+// Sign up with Supabase
 export async function signUp(
   email: string,
   password: string,
@@ -277,17 +213,34 @@ export async function signUp(
   };
 }
 
-// Sign out function
+// Sign out with Supabase
 export async function signOut(): Promise<void> {
-  console.log("signOut: Starting...");
   const supabase = createClient();
-  const { error } = await supabase.auth.signOut();
+  await supabase.auth.signOut();
+}
 
-  if (error) {
-    console.error("signOut error:", error);
-  } else {
-    console.log("signOut success");
+// Get current user from Supabase session
+export async function getCurrentUser(): Promise<User | null> {
+  const supabase = createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return null;
   }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", authUser.id)
+    .single();
+
+  if (!profile) {
+    return null;
+  }
+
+  return profileToUser(profile);
 }
 
 // Update user profile
@@ -295,18 +248,18 @@ export async function updateProfile(
   updates: Partial<Profile>
 ): Promise<{ user: User | null; error: string | null }> {
   const supabase = createClient();
-
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.user) {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
     return { user: null, error: "Not authenticated" };
   }
 
   const { data: profile, error } = await supabase
     .from("profiles")
     .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq("id", session.user.id)
+    .eq("id", authUser.id)
     .select()
     .single();
 
