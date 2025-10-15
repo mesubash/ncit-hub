@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isSigningIn, setIsSigningIn] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { refreshUser, user, isAuthenticated } = useAuth()
@@ -43,18 +44,19 @@ export default function LoginPage() {
 
   // Auto-redirect if already authenticated (but not during login process)
   useEffect(() => {
-    if (isAuthenticated && user && !isLoading) {
+    if (isAuthenticated && user && !isLoading && !isSigningIn) {
       console.log("Already authenticated, redirecting to appropriate page");
       const redirectPath = user.role === "admin" ? "/admin" : "/profile";
       router.replace(redirectPath);
     }
-  }, [isAuthenticated, user, isLoading, router]);
+  }, [isAuthenticated, user, isLoading, isSigningIn, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     console.log("Login attempt started for email:", email)
     setError("")
     setIsLoading(true)
+    setIsSigningIn(true)
 
     try {
       // Remember email if checkbox is checked
@@ -100,13 +102,11 @@ export default function LoginPage() {
 
       console.log("Login successful! Redirecting...")
       
-      // Refresh auth context to get the latest session
-      await refreshUser()
-      
+      // Redirect immediately - auth context will load user in the background
       const redirectPath = signInUser.role === "admin" ? "/admin" : "/profile"
       console.log("Navigating to:", redirectPath)
       
-      // Navigate using Next.js router
+      // Navigate using Next.js router - don't wait for refreshUser
       router.replace(redirectPath)
 
     } catch (err) {
@@ -120,6 +120,7 @@ export default function LoginPage() {
       })
     } finally {
       setIsLoading(false)
+      // Don't set isSigningIn to false here - let the navigation happen first
     }
   }
 
