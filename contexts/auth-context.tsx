@@ -4,6 +4,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { type AuthState, getCurrentUser, signOut as authSignOut } from "@/lib/auth"
+import { useToast } from "@/hooks/use-toast"
 
 interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
@@ -18,6 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
     isAuthenticated: false,
   });
+  const { toast } = useToast();
 
   // Load cached user from localStorage
   const loadCachedUser = (authUserId: string): any | null => {
@@ -69,10 +71,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fallbackUser = {
         id: authUserId,
         email: sessionEmail,
-        name: sessionEmail.split('@')[0],
+        full_name: sessionEmail.split('@')[0],
         role: "student" as const,
+        user_type: null,
         department: null,
+        program_type: null,
         semester: null,
+        year: null,
+        specialization: null,
         bio: null,
         avatar_url: null,
         created_at: new Date().toISOString(),
@@ -117,10 +123,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const user = {
           id: profile.id,
           email: profile.email,
-          name: profile.full_name,
-          role: profile.role as "student" | "admin",
+          full_name: profile.full_name,
+          role: profile.role as "student" | "faculty" | "admin",
+          user_type: profile.user_type as "bachelor_student" | "master_student" | "faculty" | null,
           department: profile.department,
+          program_type: profile.program_type as "bachelor" | "master" | null,
           semester: profile.semester,
+          year: profile.year,
+          specialization: profile.specialization,
           bio: profile.bio,
           avatar_url: profile.avatar_url,
           created_at: profile.created_at,
@@ -204,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       
       if (event === "INITIAL_SESSION") {
-        // Initial session on page load
+        // Initial session on page load - no toast notification
         if (session?.user) {
           await loadUser(session.user.id, session.user.email || '');
         } else {
@@ -215,14 +225,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } else if (event === "SIGNED_IN" && session?.user) {
-        // User just signed in
+        // User just signed in - show welcome toast
         await loadUser(session.user.id, session.user.email || '');
+        toast({
+          title: "Welcome!",
+          description: "You have successfully signed in.",
+        });
       } else if (event === "SIGNED_OUT") {
         // User signed out
         setAuthState({
           user: null,
           isLoading: false,
           isAuthenticated: false,
+        });
+        toast({
+          title: "Signed out",
+          description: "You have been signed out successfully.",
         });
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         // Token was refreshed, reload user data

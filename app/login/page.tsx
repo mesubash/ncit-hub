@@ -9,19 +9,33 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Navigation } from "@/components/navigation"
 import { signIn, formatCollegeEmail } from "@/lib/auth"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { refreshUser, user, isAuthenticated } = useAuth()
+  const { toast } = useToast()
+
+  // Load remembered email on mount
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('rememberedEmail')
+    if (rememberedEmail) {
+      setEmail(rememberedEmail)
+      setRememberMe(true)
+    }
+  }, [])
 
   // Auto-redirect if already authenticated (but not during login process)
   useEffect(() => {
@@ -39,6 +53,13 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      // Remember email if checkbox is checked
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email)
+      } else {
+        localStorage.removeItem('rememberedEmail')
+      }
+
       // Sign in with email and password
       console.log("Calling signIn function...")
       const { user: signInUser, error: signInError } = await signIn(email, password)
@@ -53,12 +74,23 @@ export default function LoginPage() {
       if (signInError) {
         console.log("Sign in error:", signInError)
         setError(signInError)
+        toast({
+          title: "Login Failed",
+          description: signInError,
+          variant: "destructive",
+        })
         return
       }
 
       if (!signInUser) {
         console.log("No user returned from signIn")
-        setError("Authentication failed. Please try again.")
+        const errorMsg = "Authentication failed. Please try again."
+        setError(errorMsg)
+        toast({
+          title: "Login Failed",
+          description: errorMsg,
+          variant: "destructive",
+        })
         return
       }
 
@@ -75,7 +107,13 @@ export default function LoginPage() {
 
     } catch (err) {
       console.error("Login error:", err)
-      setError("An unexpected error occurred. Please try again.")
+      const errorMsg = "An unexpected error occurred. Please try again."
+      setError(errorMsg)
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -126,13 +164,42 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
                 />
+                <label
+                  htmlFor="remember"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Remember my email
+                </label>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>

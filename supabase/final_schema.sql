@@ -8,9 +8,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     email CITEXT UNIQUE NOT NULL,
     full_name TEXT,
     avatar_url TEXT,
-    role TEXT DEFAULT 'student' CHECK (role IN ('student', 'admin')),
+    role TEXT CHECK (role IN ('student', 'faculty', 'admin')),
+    user_type TEXT CHECK (user_type IN ('bachelor_student', 'master_student', 'faculty')),
     department TEXT,
-    semester INTEGER CHECK (semester BETWEEN 1 AND 8), -- Changed from year to semester
+    program_type TEXT CHECK (program_type IN ('bachelor', 'master')), -- Bachelor or Master's program
+    semester INTEGER CHECK (semester BETWEEN 1 AND 8), -- For bachelor students (1-8)
+    year INTEGER CHECK (year BETWEEN 1 AND 2), -- For master students (1-2)
+    specialization TEXT, -- For master's students or faculty's expertise
     bio TEXT,
     social_links JSONB DEFAULT '{}',  -- Store social media links
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

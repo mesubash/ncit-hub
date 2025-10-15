@@ -10,8 +10,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Navigation } from "@/components/navigation"
+import { AdminGuard } from "@/components/admin-guard"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
+import { createEvent } from "@/lib/events"
 import Link from "next/link"
-import { ArrowLeft, Save, Eye, X, Calendar, MapPin, Clock } from "lucide-react"
+import { ArrowLeft, Save, Eye, X, Calendar, MapPin, Clock, Loader2 } from "lucide-react"
 import { useState } from "react"
 
 const categories = ["Academic", "Career", "Cultural", "Sports", "Workshop", "Social", "Networking"]
@@ -27,7 +32,12 @@ export default function NewEventPage() {
   const [capacity, setCapacity] = useState("")
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState("")
-  const [status, setStatus] = useState("draft")
+  const [status, setStatus] = useState("upcoming")
+  const [isLoading, setIsLoading] = useState(false)
+  
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const router = useRouter()
 
   const addTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -40,43 +50,83 @@ export default function NewEventPage() {
     setTags(tags.filter((tag) => tag !== tagToRemove))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically save to database
-    console.log(" Event data:", {
-      title,
-      description,
-      date,
-      time,
-      location,
-      category,
-      organizer,
-      capacity,
-      tags,
-      status,
-    })
-    alert("Event saved successfully!")
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create an event",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Combine date and time
+      const eventDateTime = `${date}T${time}:00`
+
+      const { event, error } = await createEvent({
+        title,
+        description,
+        event_date: eventDateTime,
+        location,
+        organizer_id: user.id,
+        category_id: category || undefined,
+        max_participants: capacity ? parseInt(capacity) : undefined,
+        status: status as "upcoming" | "ongoing" | "completed" | "cancelled",
+      })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: `Event created successfully!`,
+      })
+
+      // Redirect to events list
+      router.push('/admin/events')
+    } catch (err) {
+      console.error("Create event error:", err)
+      toast({
+        title: "Error",
+        description: "Failed to create event. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <AdminGuard>
+      <div className="min-h-screen bg-background">
+        <Navigation />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link href="/admin/events">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Events
-            </Link>
-          </Button>
-          <h1 className="text-4xl font-bold text-foreground mb-4">Create New Event</h1>
-          <p className="text-xl text-muted-foreground">Plan and publish a new event for your college community.</p>
-        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <Button variant="ghost" size="sm" asChild className="mb-4">
+              <Link href="/admin/events">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Events
+              </Link>
+            </Button>
+            <h1 className="text-4xl font-bold text-foreground mb-4">Create New Event</h1>
+            <p className="text-xl text-muted-foreground">Plan and publish a new event for your college community.</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid lg:grid-cols-3 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               <Card>
@@ -173,9 +223,10 @@ export default function NewEventPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
                         <SelectItem value="upcoming">Upcoming</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
+                        <SelectItem value="ongoing">Ongoing</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -255,11 +306,20 @@ export default function NewEventPage() {
 
               {/* Action Buttons */}
               <div className="space-y-2">
-                <Button type="submit" className="w-full">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Event
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Event
+                    </>
+                  )}
                 </Button>
-                <Button type="button" variant="outline" className="w-full bg-transparent">
+                <Button type="button" variant="outline" className="w-full bg-transparent" disabled={isLoading}>
                   <Eye className="h-4 w-4 mr-2" />
                   Preview
                 </Button>
@@ -268,6 +328,7 @@ export default function NewEventPage() {
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </AdminGuard>
   )
 }

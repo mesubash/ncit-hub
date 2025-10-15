@@ -84,7 +84,7 @@ export default function HomePage() {
           {isAuthenticated && user ? (
             <>
               <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance">
-                Welcome back, {user.name || user.email.split('@')[0]}!
+                Welcome back, {user.full_name || user.email.split('@')[0]}!
               </h1>
               <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto text-pretty">
                 {user.role === "admin" 

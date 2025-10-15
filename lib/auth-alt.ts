@@ -53,14 +53,18 @@ export async function getCurrentUserAlt(): Promise<User | null> {
     const user: User = {
       id: profile.id,
       email: profile.email,
-      name: profile.full_name,
-      role: profile.role as "student" | "admin",
+      full_name: profile.full_name,
+      role: profile.role as "student" | "admin" | "faculty",
       department: profile.department,
       semester: profile.semester,
       bio: profile.bio,
       avatar_url: profile.avatar_url,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
+      user_type: profile.user_type,
+      program_type: profile.program_type,
+      year: profile.year,
+      specialization: profile.specialization,
     };
 
     console.log("getCurrentUserAlt: Success, returning user:", user.email);

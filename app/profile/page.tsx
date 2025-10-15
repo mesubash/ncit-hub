@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Navigation } from "@/components/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { getBlogsByAuthor, type Blog } from "@/lib/blog"
-import { ArrowLeft, Plus, Edit, Eye, Clock, CheckCircle, XCircle, User, Settings, Loader2 } from "lucide-react"
+import { ArrowLeft, Plus, Edit, Eye, Clock, CheckCircle, XCircle, User, Settings, Loader2, GraduationCap, Briefcase, BookOpen, Calendar } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -45,7 +45,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       setProfileData({
-        name: user.name || "",
+        name: user.full_name || "",
         email: user.email,
       })
       loadUserBlogs()
@@ -195,24 +195,129 @@ export default function ProfilePage() {
             </Dialog>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Name</p>
-                <p className="font-semibold">{user.name}</p>
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Full Name</p>
+                  <p className="text-lg font-semibold">{user.full_name || "Not set"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Email</p>
+                  <p className="text-lg font-semibold">{user.email}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-semibold">{user.email}</p>
+
+              <div className="border-t pt-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Role */}
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Role</p>
+                    <div className="flex items-center gap-2">
+                      {user.role === "faculty" ? (
+                        <Briefcase className="h-4 w-4 text-primary" />
+                      ) : (
+                        <GraduationCap className="h-4 w-4 text-primary" />
+                      )}
+                      <Badge variant="secondary" className="capitalize text-base px-3 py-1">
+                        {user.role === "faculty" ? "Faculty Member" : "Student"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* User Type */}
+                  {user.user_type && (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Program Level</p>
+                      <p className="text-lg capitalize">
+                        {user.user_type === "bachelor_student" && "Bachelor's Student"}
+                        {user.user_type === "master_student" && "Master's Student"}
+                        {user.user_type === "faculty" && "Faculty Member"}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Role</p>
-                <Badge variant="secondary" className="capitalize">
-                  {user.role}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Member Since</p>
-                <p className="font-semibold">{new Date(user.created_at).toLocaleDateString()}</p>
+
+              {/* Department Info */}
+              {user.department && (
+                <div className="border-t pt-6">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      {user.role === "faculty" ? "Department(s) / Expertise" : "Department / Program"}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {user.department.split(",").map((dept, index) => (
+                        <Badge key={index} variant="outline" className="text-sm px-3 py-1">
+                          {dept.trim()}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Academic Details */}
+              {(user.semester || user.year || user.program_type) && (
+                <div className="border-t pt-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Program Type */}
+                    {user.program_type && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Program Type</p>
+                        <p className="text-lg capitalize">{user.program_type}'s Program</p>
+                      </div>
+                    )}
+
+                    {/* Semester for Bachelor students */}
+                    {user.semester && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Current Semester
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {user.semester}
+                          {user.semester === 1 ? "st" : user.semester === 2 ? "nd" : user.semester === 3 ? "rd" : "th"} Semester
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Year for Master students */}
+                    {user.year && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Current Year
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {user.year}{user.year === 1 ? "st" : "nd"} Year
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Specialization */}
+              {user.specialization && (
+                <div className="border-t pt-6">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {user.role === "faculty" ? "Research / Teaching Focus" : "Specialization"}
+                    </p>
+                    <p className="text-lg">{user.specialization}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Member Since */}
+              <div className="border-t pt-6">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Member Since</p>
+                  <p className="text-lg font-semibold">{new Date(user.created_at).toLocaleDateString()}</p>
+                </div>
               </div>
             </div>
           </CardContent>

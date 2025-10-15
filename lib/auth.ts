@@ -3,13 +3,21 @@ import type { Database } from "@/lib/supabase/types";
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
+export type UserType = "bachelor_student" | "master_student" | "faculty";
+export type ProgramType = "bachelor" | "master";
+export type UserRole = "student" | "faculty" | "admin";
+
 export interface User {
   id: string;
   email: string;
-  name: string | null;
-  role: "student" | "admin";
+  full_name: string | null;
+  role: UserRole;
+  user_type: UserType | null;
   department: string | null;
-  semester: number | null;
+  program_type: ProgramType | null;
+  semester: number | null; // For bachelor students (1-8)
+  year: number | null; // For master students (1-2)
+  specialization: string | null; // For master students or faculty
   bio: string | null;
   avatar_url: string | null;
   created_at: string;
@@ -37,10 +45,14 @@ export function profileToUser(profile: Profile): User {
   return {
     id: profile.id,
     email: profile.email,
-    name: profile.full_name,
-    role: profile.role as "student" | "admin",
+    full_name: profile.full_name,
+    role: profile.role as UserRole,
+    user_type: profile.user_type as UserType | null,
     department: profile.department,
+    program_type: profile.program_type as ProgramType | null,
     semester: profile.semester,
+    year: profile.year,
+    specialization: profile.specialization,
     bio: profile.bio,
     avatar_url: profile.avatar_url,
     created_at: profile.created_at,
@@ -120,7 +132,7 @@ export async function getCurrentUser(): Promise<User | null> {
       id: user.id,
       email: user.email,
       role: user.role,
-      name: user.name,
+      full_name: user.full_name,
     });
     return user;
   } catch (error) {
@@ -176,18 +188,38 @@ export async function signIn(
     }
 
     if (!profile) {
-      // Create profile if it doesn't exist
-      console.log("Creating new profile...");
+      // Create profile if it doesn't exist - use metadata from auth.users
+      console.log("Creating new profile from auth metadata...");
+
+      const metadata = authData.user.user_metadata || {};
+      const userType = metadata.user_type as UserType;
+      const role: UserRole = userType === "faculty" ? "faculty" : "student";
+
+      console.log("Creating profile with metadata:", {
+        full_name: metadata.full_name,
+        role,
+        user_type: userType,
+        department: metadata.department,
+        program_type: metadata.program_type,
+        semester: metadata.semester,
+        year: metadata.year,
+        specialization: metadata.specialization,
+      });
+
       const { data: newProfile, error: createError } = await supabase
         .from("profiles")
         .insert([
           {
             id: authData.user.id,
             email: authData.user.email!,
-            full_name: authData.user.user_metadata?.full_name || null,
-            department: authData.user.user_metadata?.department || null,
-            semester: authData.user.user_metadata?.semester || null,
-            role: "student",
+            full_name: metadata.full_name || null,
+            role: metadata.role || role, // Use metadata role or calculate from user_type
+            user_type: userType || null,
+            department: metadata.department || null,
+            program_type: metadata.program_type || null,
+            semester: metadata.semester || null,
+            year: metadata.year || null,
+            specialization: metadata.specialization || null,
           },
         ])
         .select()
@@ -217,8 +249,12 @@ export async function signUp(
   email: string,
   password: string,
   name: string,
-  department?: string,
-  semester?: number
+  userType: UserType,
+  department: string,
+  programType?: ProgramType,
+  semester?: number,
+  year?: number,
+  specialization?: string
 ): Promise<{ user: User | null; error: string | null }> {
   if (!isValidCollegeEmail(email)) {
     return {
@@ -229,14 +265,34 @@ export async function signUp(
 
   const supabase = createClient();
 
+  // Determine role based on user_type BEFORE signup
+  const role: UserRole = userType === "faculty" ? "faculty" : "student";
+
+  console.log("signUp: Starting registration with:", {
+    email,
+    name,
+    userType,
+    calculatedRole: role,
+    department,
+    programType,
+    semester,
+    year,
+    specialization,
+  });
+
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         full_name: name,
+        role, // Add role to metadata
+        user_type: userType,
         department,
+        program_type: programType,
         semester,
+        year,
+        specialization,
       },
       emailRedirectTo: `${window.location.origin}/auth/callback`,
     },
@@ -252,35 +308,116 @@ export async function signUp(
 
   // Check if email confirmation is required
   if (!authData.session) {
+    // Email confirmation is enabled - profile will be created via trigger or callback
     return {
       user: null,
-      error:
-        "Registration successful! Please check your email to verify your account before signing in.",
+      error: "VERIFICATION_REQUIRED",
+    };
+  }
+
+  // Email confirmation is disabled - user is logged in immediately
+  // Try to get existing profile first
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", authData.user.id)
+    .single();
+
+  if (existingProfile) {
+    // Profile already exists (maybe from trigger)
+    console.log("Profile already exists, using existing profile");
+    return {
+      user: profileToUser(existingProfile),
+      error: null,
     };
   }
 
   // Create user profile
+  console.log("Creating new profile for user:", authData.user.id);
+
+  // Log what we're about to insert
+  console.log("Creating profile with data:", {
+    id: authData.user.id,
+    email,
+    full_name: name,
+    role, // Already declared at the top of the function
+    user_type: userType,
+    department,
+    program_type: programType,
+    semester,
+    year,
+    specialization,
+  });
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .insert({
       id: authData.user.id,
       email,
       full_name: name,
+      role,
+      user_type: userType,
       department,
+      program_type: programType,
       semester,
-      role: "student",
+      year,
+      specialization,
     })
     .select()
     .single();
 
   if (profileError) {
-    return { user: null, error: "Failed to create user profile" };
+    console.error("Profile creation error:", profileError);
+
+    // Wait a moment and try multiple times (database might need time to commit)
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms
+      retryCount++;
+
+      console.log(`Retry ${retryCount}/${maxRetries}: Checking for profile...`);
+
+      const { data: retryProfile, error: retryError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (retryProfile) {
+        console.log("Profile found on retry", retryCount);
+        return {
+          user: profileToUser(retryProfile),
+          error: null,
+        };
+      }
+
+      if (retryError) {
+        console.error(`Retry ${retryCount} error:`, retryError);
+      }
+    }
+
+    return {
+      user: null,
+      error: "PROFILE_CREATION_FAILED",
+    };
   }
+
+  // Success - user is created and logged in
+  console.log("Profile created successfully", {
+    id: profile.id,
+    email: profile.email,
+    role: profile.role,
+    user_type: profile.user_type,
+  });
+
+  // Wait a moment to ensure the profile is fully committed
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   return {
     user: profileToUser(profile),
-    error:
-      "Registration successful! Please check your email to verify your account before signing in.",
+    error: null,
   };
 }
 

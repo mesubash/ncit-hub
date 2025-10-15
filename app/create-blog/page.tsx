@@ -77,9 +77,8 @@ export default function CreateBlogPage() {
         title: formData.title.trim(),
         content: formData.content.trim(),
         excerpt: generateExcerpt(formData.content.trim()),
-        author: user.name,
-        authorId: user.id,
-        category: formData.category,
+        author_id: user.id,
+        category_id: formData.category,
         tags,
         images: formData.images, // Include images in blog data
         status: isDraft ? ("draft" as const) : ("pending" as const),

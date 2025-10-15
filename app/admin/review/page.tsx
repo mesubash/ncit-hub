@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Navigation } from "@/components/navigation"
 import { AdminGuard } from "@/components/admin-guard"
 import { getPendingBlogs, updateBlog, type Blog } from "@/lib/blog"
+import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, Eye, CheckCircle, XCircle, Clock, User, Calendar, Tag, Loader2 } from "lucide-react"
 import {
   Dialog,
@@ -27,8 +28,7 @@ export default function AdminReviewPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null)
   const [rejectionReason, setRejectionReason] = useState("")
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+  const { toast } = useToast()
 
   useEffect(() => {
     loadPendingBlogs()
@@ -37,9 +37,14 @@ export default function AdminReviewPage() {
   const loadPendingBlogs = async () => {
     try {
       const blogs = await getPendingBlogs()
-      setPendingBlogs(blogs)
+      setPendingBlogs(Array.isArray(blogs) ? blogs : [])
     } catch (err) {
-      setError("Failed to load pending blogs")
+      toast({
+        title: "Error",
+        description: "Failed to load pending blogs",
+        variant: "destructive",
+      })
+      setPendingBlogs([])
     } finally {
       setIsLoading(false)
     }
@@ -47,19 +52,23 @@ export default function AdminReviewPage() {
 
   const handleApprove = async (blogId: string) => {
     setActionLoading(blogId)
-    setError("")
-    setSuccess("")
 
     try {
       await updateBlog(blogId, {
         status: "published",
-        publishedAt: new Date().toISOString(),
       })
 
       setPendingBlogs((prev) => prev.filter((blog) => blog.id !== blogId))
-      setSuccess("Blog approved and published successfully!")
+      toast({
+        title: "Success",
+        description: "Blog approved and published successfully!",
+      })
     } catch (err) {
-      setError("Failed to approve blog")
+      toast({
+        title: "Error",
+        description: "Failed to approve blog",
+        variant: "destructive",
+      })
     } finally {
       setActionLoading(null)
     }
@@ -67,26 +76,34 @@ export default function AdminReviewPage() {
 
   const handleReject = async (blogId: string, reason: string) => {
     if (!reason.trim()) {
-      setError("Please provide a rejection reason")
+      toast({
+        title: "Error",
+        description: "Please provide a rejection reason",
+        variant: "destructive",
+      })
       return
     }
 
     setActionLoading(blogId)
-    setError("")
-    setSuccess("")
 
     try {
       await updateBlog(blogId, {
-        status: "rejected",
-        rejectionReason: reason.trim(),
+        status: "archived", // Use archived instead of rejected
       })
 
       setPendingBlogs((prev) => prev.filter((blog) => blog.id !== blogId))
-      setSuccess("Blog rejected with feedback sent to author!")
+      toast({
+        title: "Success",
+        description: "Blog rejected with feedback sent to author!",
+      })
       setRejectionReason("")
       setSelectedBlog(null)
     } catch (err) {
-      setError("Failed to reject blog")
+      toast({
+        title: "Error",
+        description: "Failed to reject blog",
+        variant: "destructive",
+      })
     } finally {
       setActionLoading(null)
     }
@@ -126,18 +143,6 @@ export default function AdminReviewPage() {
             </p>
           </div>
 
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="mb-6 border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-200">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-
           {pendingBlogs.length === 0 ? (
             <Card>
               <CardContent className="py-16 text-center">
@@ -157,13 +162,15 @@ export default function AdminReviewPage() {
                         <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
                           <div className="flex items-center">
                             <User className="h-4 w-4 mr-1" />
-                            {blog.author}
+                            {blog.author?.full_name || blog.author?.email || 'Unknown Author'}
                           </div>
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1" />
-                            {new Date(blog.createdAt).toLocaleDateString()}
+                            {new Date(blog.created_at).toLocaleDateString()}
                           </div>
-                          <Badge variant="secondary">{blog.category}</Badge>
+                          {blog.category && (
+                            <Badge variant="secondary">{blog.category.name}</Badge>
+                          )}
                         </div>
                         {blog.tags.length > 0 && (
                           <div className="flex items-center space-x-2">

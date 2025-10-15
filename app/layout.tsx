@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { SEOHead } from "@/components/seo-head"
+import { Toaster } from "@/components/ui/toaster"
 import { generateMetadata } from "@/lib/seo"
 import "./globals.css"
 import { Suspense } from "react"
@@ -47,6 +48,7 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="system" storageKey="college-hub-theme">
           <AuthProvider>
             <Suspense fallback={<div className="min-h-screen bg-background" />}>{children}</Suspense>
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>
