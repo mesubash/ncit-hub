@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Navigation } from "@/components/navigation"
+import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { useAuth } from "@/contexts/auth-context"
 import { getBlogsByAuthor, type Blog } from "@/lib/blog"
 import { ArrowLeft, Plus, Edit, Eye, Clock, CheckCircle, XCircle, User, Settings, Loader2, GraduationCap, Briefcase, BookOpen, Calendar } from "lucide-react"
@@ -140,13 +141,15 @@ export default function ProfilePage() {
               <CardTitle>Account Information</CardTitle>
               <CardDescription>Your NCIT account details</CardDescription>
             </div>
-            <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <ChangePasswordDialog />
+              <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Edit Profile</DialogTitle>
@@ -193,6 +196,7 @@ export default function ProfilePage() {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">

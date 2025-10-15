@@ -489,3 +489,60 @@ export async function updateProfile(
 
   return { user: profileToUser(profile), error: null };
 }
+
+// Change password function
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createClient();
+
+  // Validate inputs
+  if (!currentPassword || !newPassword) {
+    return { success: false, error: "Both current and new passwords are required" };
+  }
+
+  if (newPassword.length < 8) {
+    return { success: false, error: "New password must be at least 8 characters long" };
+  }
+
+  if (currentPassword === newPassword) {
+    return { success: false, error: "New password must be different from current password" };
+  }
+
+  try {
+    // Get current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    // Verify current password by trying to sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email!,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      return { success: false, error: "Current password is incorrect" };
+    }
+
+    // Update to new password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error("Change password error:", error);
+    return { success: false, error: error.message || "Failed to change password" };
+  }
+}
