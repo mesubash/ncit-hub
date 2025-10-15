@@ -21,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const { toast } = useToast();
   const isInitialLoad = useRef(true);
+  const hasSeenInitialSession = useRef(false);
 
   // Load cached user from localStorage
   const loadCachedUser = (authUserId: string): any | null => {
@@ -226,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (event === "INITIAL_SESSION") {
         // Initial session on page load - no toast notification
+        hasSeenInitialSession.current = true;
         if (session?.user) {
           await loadUser(session.user.id, session.user.email || '');
         } else {
@@ -238,9 +240,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Mark initial load as complete
         isInitialLoad.current = false;
       } else if (event === "SIGNED_IN" && session?.user) {
-        // Only show toast if this is NOT the initial load (i.e., user actually just logged in)
+        // Only show toast if:
+        // 1. This is NOT the initial load AND
+        // 2. We haven't seen INITIAL_SESSION (means this is a real login, not page refresh)
         await loadUser(session.user.id, session.user.email || '');
-        if (!isInitialLoad.current) {
+        
+        if (!isInitialLoad.current && !hasSeenInitialSession.current) {
           toast({
             title: "Welcome!",
             description: "You have successfully signed in.",
