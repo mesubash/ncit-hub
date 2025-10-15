@@ -58,29 +58,10 @@ export async function createBlog(blogData: {
 }): Promise<{ blog: Blog | null; error: string | null }> {
   const supabase = createClient();
 
-  // Generate slug from title
-  const baseSlug = generateSlug(blogData.title);
-  let slug = baseSlug;
-  let counter = 1;
-
-  // Check if slug exists and make it unique
-  while (true) {
-    const { data: existing } = await supabase
-      .from("blogs")
-      .select("id")
-      .eq("slug", slug)
-      .single();
-
-    if (!existing) break;
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-
   const { data, error } = await supabase
     .from("blogs")
     .insert({
       title: blogData.title,
-      slug: slug, // Add generated slug
       content: blogData.content,
       excerpt: blogData.excerpt || generateExcerpt(blogData.content),
       author_id: blogData.author_id,
@@ -109,7 +90,6 @@ export async function createBlog(blogData: {
     .single();
 
   if (error) {
-    console.error("Supabase blog creation error:", error);
     return { blog: null, error: error.message };
   }
 

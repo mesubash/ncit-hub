@@ -80,6 +80,8 @@ export default function LoginPage() {
       if (signInError) {
         console.log("Sign in error:", signInError)
         setError(signInError)
+        setIsLoading(false)
+        setIsSigningIn(false)
         toast({
           title: "Login Failed",
           description: signInError,
@@ -92,6 +94,8 @@ export default function LoginPage() {
         console.log("No user returned from signIn")
         const errorMsg = "Authentication failed. Please try again."
         setError(errorMsg)
+        setIsLoading(false)
+        setIsSigningIn(false)
         toast({
           title: "Login Failed",
           description: errorMsg,
@@ -100,27 +104,32 @@ export default function LoginPage() {
         return
       }
 
-      console.log("Login successful! Redirecting...")
+      console.log("Login successful! Redirecting immediately...")
       
-      // Redirect immediately - auth context will load user in the background
+      // Determine redirect path
       const redirectPath = signInUser.role === "admin" ? "/admin" : "/profile"
       console.log("Navigating to:", redirectPath)
       
-      // Navigate using Next.js router - don't wait for refreshUser
-      router.replace(redirectPath)
+      // Show success toast
+      toast({
+        title: "Welcome back!",
+        description: `Logged in as ${signInUser.full_name || signInUser.email}`,
+      })
+      
+      // Use window.location for instant redirect (no async routing delays)
+      window.location.href = redirectPath
 
     } catch (err) {
       console.error("Login error:", err)
       const errorMsg = "An unexpected error occurred. Please try again."
       setError(errorMsg)
+      setIsLoading(false)
+      setIsSigningIn(false)
       toast({
         title: "Error",
         description: errorMsg,
         variant: "destructive",
       })
-    } finally {
-      setIsLoading(false)
-      // Don't set isSigningIn to false here - let the navigation happen first
     }
   }
 

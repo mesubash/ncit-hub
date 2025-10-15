@@ -34,7 +34,10 @@ export default function BlogsPage() {
 
   const loadData = async () => {
     try {
-      const [blogsResult, categoriesResult] = await Promise.all([getAllBlogs(), getCategories()])
+      const [blogsResult, categoriesResult] = await Promise.all([
+        getAllBlogs("published"), // Only fetch published blogs
+        getCategories()
+      ])
 
       if (blogsResult.error) {
         console.error("Failed to load blogs:", blogsResult.error)

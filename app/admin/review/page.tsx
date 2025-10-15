@@ -36,9 +36,21 @@ export default function AdminReviewPage() {
 
   const loadPendingBlogs = async () => {
     try {
-      const blogs = await getPendingBlogs()
-      setPendingBlogs(Array.isArray(blogs) ? blogs : [])
+      const { blogs, error } = await getPendingBlogs()
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load pending blogs",
+          variant: "destructive",
+        })
+        setPendingBlogs([])
+        return
+      }
+      
+      setPendingBlogs(blogs)
     } catch (err) {
+      console.error("Error loading pending blogs:", err)
       toast({
         title: "Error",
         description: "Failed to load pending blogs",
@@ -56,7 +68,8 @@ export default function AdminReviewPage() {
     try {
       await updateBlog(blogId, {
         status: "published",
-      })
+        published_at: new Date().toISOString(), // Set publish date
+      } as any) // Type assertion to allow published_at
 
       setPendingBlogs((prev) => prev.filter((blog) => blog.id !== blogId))
       toast({
