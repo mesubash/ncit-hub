@@ -11,7 +11,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 
-[Live Demo](https://ncithub.vercel.app) • [Report Bug](https://github.com/NepalTekComm/ncit-hub/issues) • [Request Feature](https://github.com/NepalTekComm/ncit-hub/issues)
+[Live Demo](https://ncit-hub-58ko.vercel.app) • [Report Bug](https://github.com/NepalTekComm/ncit-hub/issues) • [Request Feature](https://github.com/NepalTekComm/ncit-hub/issues)
 
 </div>
 
@@ -579,9 +579,9 @@ We welcome contributions from the community! Here's how you can help:
 
 ### Contact
 
-- **Email**: subashdhami@example.com
-- **GitHub**: [@subashdhami](https://github.com/subashdhami)
-- **LinkedIn**: [Subash Singh Dhami](https://linkedin.com/in/subashdhami)
+- **Email**: hello@subashsdhami.com.np
+- **GitHub**: [@subashdhami](https://github.com/mesubash)
+- **LinkedIn**: [Subash Singh Dhami](https://linkedin.com/in/subashsdhami)
 
 ---
 
@@ -640,7 +640,7 @@ Need help? We're here for you!
 - 📧 **Email**: support@ncithub.edu.np
 - 💬 **GitHub Issues**: [Report a bug](https://github.com/nepal-tech-community/ncit-hub/issues)
 - 📖 **Documentation**: [Full docs](https://github.com/nepal-tech-community/ncit-hub/wiki)
-- 🌐 **Website**: [ncithub.vercel.app](https://ncithub.vercel.app)
+- 🌐 **Website**: [ncithub.vercel.app](https://ncit-hub-58ko.vercel.app)
 
 ---
 
