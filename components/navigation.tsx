@@ -76,9 +76,8 @@ export function Navigation() {
             <div className="hidden md:flex space-x-1">
               {navItems.map((item) => {
                 const isActive = pathname === item.href
-                const isNewForUser = 
-                  (item.href === "/create-blog" && (user?.role === "student" || user?.role === "faculty")) ||
-                  (item.href === "/admin" && user?.role === "admin")
+                const isAdminButton = item.href === "/admin" && user?.role === "admin"
+                const isWriteBlogButton = item.href === "/create-blog" && (user?.role === "student" || user?.role === "faculty")
                 
                 return (
                   <Link
@@ -87,14 +86,18 @@ export function Navigation() {
                     className={`relative px-4 py-2 transition-all duration-200 rounded-md group ${
                       isActive 
                         ? "text-foreground font-medium" 
+                        : isAdminButton
+                        ? "bg-gradient-to-r from-orange-600 to-red-600 text-white hover:from-orange-700 hover:to-red-700 font-medium shadow-md"
+                        : isWriteBlogButton
+                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 font-medium shadow-md"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                     }`}
                   >
                     <span className="relative inline-flex items-center gap-1.5">
                       {item.label}
-                      {isNewForUser && (
+                      {(isAdminButton || isWriteBlogButton) && (
                         <span className="relative">
-                          <Sparkles className="h-3.5 w-3.5 text-yellow-500 animate-pulse" />
+                          <Sparkles className="h-3.5 w-3.5 text-yellow-300 animate-pulse" />
                           <span className="absolute inset-0 h-3.5 w-3.5">
                             <span className="absolute inset-0 rounded-full bg-yellow-400/20 animate-ping" />
                           </span>
@@ -234,31 +237,34 @@ export function Navigation() {
               {/* Navigation Links */}
               {navItems.map((item) => {
                 const isActive = pathname === item.href
-                const isNewForUser = 
-                  (item.href === "/create-blog" && user?.role === "student") ||
-                  (item.href === "/admin" && user?.role === "admin")
+                const isAdminButton = item.href === "/admin" && user?.role === "admin"
+                const isWriteBlogButton = item.href === "/create-blog" && (user?.role === "student" || user?.role === "faculty")
                 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`px-3 py-2.5 rounded-lg transition-all duration-200 flex items-center justify-between ${
                       isActive 
                         ? "bg-primary/10 text-foreground font-medium border-l-4 border-primary" 
+                        : isAdminButton
+                        ? "bg-gradient-to-r from-orange-600 to-red-600 text-white font-medium shadow-md"
+                        : isWriteBlogButton
+                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium shadow-md"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                     }`}
-                    onClick={() => setMobileMenuOpen(false)}
                   >
                     <span className="flex items-center gap-2">
                       {item.label}
-                      {isNewForUser && (
+                      {(isAdminButton || isWriteBlogButton) && (
                         <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300 text-xs">
-                          New
+                          {isAdminButton ? "Admin" : "Featured"}
                         </Badge>
                       )}
                     </span>
-                    {isNewForUser && (
-                      <Sparkles className="h-4 w-4 text-yellow-500 animate-pulse" />
+                    {(isAdminButton || isWriteBlogButton) && (
+                      <Sparkles className="h-4 w-4 text-yellow-300 animate-pulse" />
                     )}
                   </Link>
                 )
