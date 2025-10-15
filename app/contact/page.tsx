@@ -41,17 +41,17 @@ export default function ContactPage() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" placeholder="John" />
+                    <Input id="firstName" placeholder="Rajesh" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" placeholder="Doe" />
+                    <Input id="lastName" placeholder="Sharma" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="john.doe@college.edu" />
+                  <Input id="email" type="email" placeholder="rajesh.sharma@ncit.edu.np" />
                 </div>
 
                 <div className="space-y-2">
@@ -81,7 +81,7 @@ export default function ContactPage() {
                   <Mail className="h-6 w-6 text-primary mt-1" />
                   <div>
                     <h3 className="font-semibold text-foreground">Email</h3>
-                    <p className="text-muted-foreground">info@college.edu</p>
+                    <p className="text-muted-foreground">info@ncit.edu.np</p>
                     <p className="text-sm text-muted-foreground">We typically respond within 24 hours</p>
                   </div>
                 </div>
@@ -90,8 +90,8 @@ export default function ContactPage() {
                   <Phone className="h-6 w-6 text-primary mt-1" />
                   <div>
                     <h3 className="font-semibold text-foreground">Phone</h3>
-                    <p className="text-muted-foreground">(555) 123-4567</p>
-                    <p className="text-sm text-muted-foreground">Monday - Friday, 9:00 AM - 5:00 PM</p>
+                    <p className="text-muted-foreground">5186354, 5186358</p>
+                    <p className="text-sm text-muted-foreground">Sunday - Friday, 8:00 AM to 6:00 PM</p>
                   </div>
                 </div>
 
@@ -100,9 +100,9 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold text-foreground">Address</h3>
                     <p className="text-muted-foreground">
-                      123 College Avenue
+                      Balkumari
                       <br />
-                      City, State 12345
+                      Lalitpur, Nepal
                     </p>
                   </div>
                 </div>
@@ -112,11 +112,9 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold text-foreground">Office Hours</h3>
                     <p className="text-muted-foreground">
-                      Monday - Friday: 9:00 AM - 5:00 PM
+                      Sunday - Friday: 8:00 AM to 6:00 PM
                       <br />
-                      Saturday: 10:00 AM - 2:00 PM
-                      <br />
-                      Sunday: Closed
+                      Saturday: Closed
                     </p>
                   </div>
                 </div>

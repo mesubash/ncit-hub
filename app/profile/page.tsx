@@ -26,8 +26,10 @@ export default function ProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
   const [userBlogs, setUserBlogs] = useState<Blog[]>([])
+  const [displayedBlogs, setDisplayedBlogs] = useState<Blog[]>([])
   const [blogsLoading, setBlogsLoading] = useState(true)
   const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [blogsToShow, setBlogsToShow] = useState(5) // Initial: 5 blogs
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -60,6 +62,7 @@ export default function ProfilePage() {
       const result = await getBlogsByAuthor(user.id)
       if (result.blogs) {
         setUserBlogs(result.blogs)
+        setDisplayedBlogs(result.blogs.slice(0, blogsToShow))
       }
     } catch (error) {
       console.error("Failed to load user blogs:", error)
@@ -67,6 +70,17 @@ export default function ProfilePage() {
       setBlogsLoading(false)
     }
   }
+
+  // Update displayed blogs when blogsToShow changes
+  useEffect(() => {
+    setDisplayedBlogs(userBlogs.slice(0, blogsToShow))
+  }, [blogsToShow, userBlogs])
+
+  const loadMoreBlogs = () => {
+    setBlogsToShow(prev => prev + 5)
+  }
+
+  const hasMoreBlogs = blogsToShow < userBlogs.length
 
   if (isLoading) {
     return (
@@ -391,7 +405,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {userBlogs.map((blog) => (
+                {displayedBlogs.map((blog) => (
                   <div key={blog.id} className="border rounded-lg p-4">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-lg line-clamp-1">{blog.title}</h3>
@@ -464,6 +478,25 @@ export default function ProfilePage() {
                     )}
                   </div>
                 ))}
+                
+                {/* Load More Button */}
+                {hasMoreBlogs && (
+                  <div className="text-center pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={loadMoreBlogs}
+                      className="w-full sm:w-auto"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Load More Blogs ({userBlogs.length - blogsToShow} remaining)
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Showing count */}
+                <div className="text-center text-sm text-muted-foreground pt-2">
+                  Showing {displayedBlogs.length} of {userBlogs.length} blogs
+                </div>
               </div>
             )}
           </CardContent>

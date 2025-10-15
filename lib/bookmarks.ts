@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import type { Blog } from "@/lib/blog";
 
 export interface Bookmark {
   id: string;
@@ -107,57 +108,61 @@ export async function getUserBookmarkedBlogIds(userId: string) {
 /**
  * Get all user's bookmarked blogs with full blog details
  */
-export async function getUserBookmarkedBlogs(userId: string) {
+export async function getUserBookmarkedBlogs(
+  userId: string
+): Promise<{ blogs: Blog[]; error: any }> {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  // First, get all bookmarked blog IDs
+  const { data: bookmarks, error: bookmarksError } = await supabase
     .from("bookmarks")
-    .select(
-      `
-      id,
-      created_at,
-      blog_id,
-      blogs:blog_id (
-        id,
-        title,
-        slug,
-        excerpt,
-        content,
-        featured_image,
-        images,
-        tags,
-        status,
-        views,
-        likes,
-        created_at,
-        published_at,
-        author:profiles!blogs_author_id_fkey (
-          id,
-          full_name,
-          email,
-          avatar_url,
-          role
-        ),
-        category:categories (
-          id,
-          name,
-          slug,
-          color
-        )
-      )
-    `
-    )
+    .select("blog_id, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-  // Transform the data to flatten the blog object
-  const blogs =
-    data?.map((bookmark) => ({
-      ...bookmark.blogs,
-      bookmarked_at: bookmark.created_at,
-    })) || [];
+  if (bookmarksError || !bookmarks || bookmarks.length === 0) {
+    return { blogs: [], error: bookmarksError };
+  }
 
-  return { blogs, error };
+  // Then, fetch the full blog details
+  const blogIds = bookmarks.map((b) => b.blog_id);
+
+  const { data: blogs, error } = await supabase
+    .from("blogs")
+    .select(
+      `
+      id,
+      title,
+      slug,
+      excerpt,
+      content,
+      featured_image,
+      images,
+      tags,
+      status,
+      views,
+      likes,
+      created_at,
+      published_at,
+      author:profiles!blogs_author_id_fkey (
+        id,
+        full_name,
+        email,
+        avatar_url,
+        role
+      ),
+      category:categories (
+        id,
+        name,
+        slug,
+        color
+      )
+    `
+    )
+    .in("id", blogIds)
+    .eq("status", "published");
+
+  return { blogs: (blogs as unknown as Blog[]) || [], error };
 }
 
 /**

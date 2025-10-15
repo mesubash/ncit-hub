@@ -24,6 +24,7 @@ export default function BlogsPage() {
   const [bookmarkedPosts, setBookmarkedPosts] = useState<string[]>([])
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
   const [filterType, setFilterType] = useState<"all" | "bookmarked">("all")
+  const [blogsToShow, setBlogsToShow] = useState(10) // Initial: 10 blogs
   const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
@@ -158,6 +159,19 @@ export default function BlogsPage() {
       (filterType === "bookmarked" && bookmarkedPosts.includes(blog.id))
     return matchesSearch && matchesCategory && matchesFilter
   })
+
+  // Paginated blogs
+  const displayedBlogs = filteredBlogs.slice(0, blogsToShow)
+  const hasMoreBlogs = blogsToShow < filteredBlogs.length
+
+  const loadMoreBlogs = () => {
+    setBlogsToShow(prev => prev + 10)
+  }
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setBlogsToShow(10)
+  }, [searchTerm, selectedCategory, filterType])
 
   const trendingBlogs = blogs
     .filter((blog) => blog.views > 10)
@@ -297,8 +311,10 @@ export default function BlogsPage() {
             {/* Results Count */}
             <div className="mb-6">
               <p className="text-sm text-muted-foreground">
-                Showing {filteredBlogs.length} of {blogs.length} published blog posts
+                Showing {displayedBlogs.length} of {filteredBlogs.length} blog posts
                 {selectedCategory !== "All" && ` in ${selectedCategory}`}
+                {searchTerm && ` matching "${searchTerm}"`}
+                {filterType === "bookmarked" && ` (bookmarked)`}
               </p>
             </div>
 
@@ -315,8 +331,9 @@ export default function BlogsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid md:grid-cols-2 gap-6">
-                {filteredBlogs.map((blog) => (
+              <>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {displayedBlogs.map((blog) => (
                   <Card
                     key={blog.id}
                     className="hover:shadow-lg transition-all duration-300 h-full flex flex-col group"
@@ -426,7 +443,17 @@ export default function BlogsPage() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
+                </div>
+
+                {/* Load More Button */}
+                {hasMoreBlogs && (
+                  <div className="mt-8 text-center">
+                    <Button onClick={loadMoreBlogs} variant="outline" size="lg">
+                      Load More Blogs ({filteredBlogs.length - blogsToShow} remaining)
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

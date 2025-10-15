@@ -159,6 +159,13 @@ export default function RegisterPage() {
     setError("")
     setSuccess(false)
 
+    // Email validation - username must be at least 3 characters
+    const emailUsername = formData.email.split('@')[0]
+    if (!emailUsername || emailUsername.length < 3) {
+      setError("Email username must be at least 3 characters long")
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       return
@@ -374,12 +381,28 @@ export default function RegisterPage() {
                       value={formData.email.split("@")[0] || ""}
                       onChange={(e) => handleInputChange("email", formatCollegeEmail(e.target.value))}
                       required
-                      className="h-11 rounded-r-none"
+                      className={`h-11 rounded-r-none ${
+                        formData.email && formData.email.split("@")[0].length < 3 
+                          ? "border-red-500" 
+                          : ""
+                      }`}
                     />
                     <div className="flex items-center bg-muted px-3 text-sm text-muted-foreground border border-l-0 rounded-r-md">
                       @ncit.edu.np
                     </div>
                   </div>
+                  {formData.email && formData.email.split("@")[0].length < 3 && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <X className="h-3 w-3" />
+                      Username must be at least 3 characters
+                    </p>
+                  )}
+                  {formData.email && formData.email.split("@")[0].length >= 3 && (
+                    <p className="text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Valid email format
+                    </p>
+                  )}
                 </div>
               </div>
 

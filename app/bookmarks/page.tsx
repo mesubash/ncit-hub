@@ -7,44 +7,18 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Navigation } from "@/components/navigation"
 import { AuthGuard } from "@/components/auth-guard"
-import { getUserBookmarkedBlogs } from "@/lib/bookmarks"
-import { toggleBookmark } from "@/lib/bookmarks"
+import { getUserBookmarkedBlogs, toggleBookmark } from "@/lib/bookmarks"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import type { Blog } from "@/lib/blog"
 import Link from "next/link"
 import { ArrowLeft, Bookmark, Calendar, Heart, MessageCircle, User, Loader2, BookmarkX } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
-interface BookmarkedBlog {
-  id: string
-  title: string
-  slug: string
-  excerpt: string
-  tags: string[]
-  views: number
-  likes: number
-  created_at: string
-  published_at: string
-  bookmarked_at: string
-  author?: {
-    id: string
-    full_name: string | null
-    email: string
-    avatar_url: string | null
-    role: string
-  }
-  category?: {
-    id: string
-    name: string
-    slug: string
-    color: string
-  }
-}
-
 export default function BookmarksPage() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [blogs, setBlogs] = useState<BookmarkedBlog[]>([])
+  const [blogs, setBlogs] = useState<Blog[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
@@ -67,7 +41,7 @@ export default function BookmarksPage() {
           variant: "destructive",
         })
       } else {
-        setBlogs(bookmarkedBlogs as any[])
+        setBlogs(bookmarkedBlogs)
       }
     } catch (error) {
       console.error("Failed to load bookmarks:", error)
@@ -174,7 +148,8 @@ export default function BookmarksPage() {
                           </Badge>
                         )}
                         <Badge variant="outline" className="text-xs">
-                          Saved {formatDistanceToNow(new Date(blog.bookmarked_at), { addSuffix: true })}
+                          <Bookmark className="h-3 w-3 mr-1" />
+                          Bookmarked
                         </Badge>
                       </div>
                     </div>

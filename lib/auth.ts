@@ -499,15 +499,24 @@ export async function changePassword(
 
   // Validate inputs
   if (!currentPassword || !newPassword) {
-    return { success: false, error: "Both current and new passwords are required" };
+    return {
+      success: false,
+      error: "Both current and new passwords are required",
+    };
   }
 
   if (newPassword.length < 8) {
-    return { success: false, error: "New password must be at least 8 characters long" };
+    return {
+      success: false,
+      error: "New password must be at least 8 characters long",
+    };
   }
 
   if (currentPassword === newPassword) {
-    return { success: false, error: "New password must be different from current password" };
+    return {
+      success: false,
+      error: "New password must be different from current password",
+    };
   }
 
   try {
@@ -543,6 +552,9 @@ export async function changePassword(
     return { success: true, error: null };
   } catch (error: any) {
     console.error("Change password error:", error);
-    return { success: false, error: error.message || "Failed to change password" };
+    return {
+      success: false,
+      error: error.message || "Failed to change password",
+    };
   }
 }
