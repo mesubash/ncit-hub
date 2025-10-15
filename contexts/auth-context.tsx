@@ -207,13 +207,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes FIRST, then get initial session
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+    } =    supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+      // Check if we're in registration mode - if so, ignore ALL auth events
+      const isRegistering = typeof window !== 'undefined' && sessionStorage.getItem('isRegistering') === 'true';
+      
       console.log("AuthProvider: Auth state change:", event, {
         hasSession: !!session,
         hasUser: !!session?.user,
         userEmail: session?.user?.email,
         isInitialLoad: isInitialLoad.current,
+        isRegistering,
       });
+      
+      if (isRegistering) {
+        console.log("AuthProvider: Ignoring ALL auth events during registration");
+        return;
+      }
       
       if (event === "INITIAL_SESSION") {
         // Initial session on page load - no toast notification
@@ -245,10 +254,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoading: false,
           isAuthenticated: false,
         });
-        toast({
-          title: "Signed out",
-          description: "You have been signed out successfully.",
-        });
+        
+        // Only show toast if NOT during registration
+        if (!isRegistering) {
+          toast({
+            title: "Signed out",
+            description: "You have been signed out successfully.",
+          });
+        } else {
+          console.log("AuthProvider: Ignoring SIGNED_OUT event during registration");
+        }
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         // Token was refreshed, reload user data
         await loadUser(session.user.id, session.user.email || '');

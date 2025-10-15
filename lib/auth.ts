@@ -280,6 +280,11 @@ export async function signUp(
     specialization,
   });
 
+  // Set flag to prevent auto sign-in during registration
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem("isRegistering", "true");
+  }
+
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -303,19 +308,29 @@ export async function signUp(
   }
 
   if (!authData.user) {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("isRegistering");
+    }
     return { user: null, error: "Registration failed" };
   }
+
+  // IMMEDIATELY sign out to prevent auto-login - do this BEFORE any other operations
+  console.log("signUp: Immediately signing out to prevent auto-login...");
+  await supabase.auth.signOut();
 
   // Check if email confirmation is required
   if (!authData.session) {
     // Email confirmation is enabled - profile will be created via trigger or callback
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("isRegistering");
+    }
     return {
       user: null,
       error: "VERIFICATION_REQUIRED",
     };
   }
 
-  // Email confirmation is disabled - user is logged in immediately
+  // Email confirmation is disabled - user was logged in but we signed them out
   // Try to get existing profile first
   const { data: existingProfile } = await supabase
     .from("profiles")
@@ -325,10 +340,13 @@ export async function signUp(
 
   if (existingProfile) {
     // Profile already exists (maybe from trigger)
-    console.log("Profile already exists, using existing profile");
+    console.log("Profile already exists");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("isRegistering");
+    }
     return {
-      user: profileToUser(existingProfile),
-      error: null,
+      user: null,
+      error: "REGISTRATION_SUCCESS",
     };
   }
 
@@ -387,9 +405,13 @@ export async function signUp(
 
       if (retryProfile) {
         console.log("Profile found on retry", retryCount);
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("isRegistering");
+        }
+        // Profile created but user already signed out
         return {
-          user: profileToUser(retryProfile),
-          error: null,
+          user: null,
+          error: "REGISTRATION_SUCCESS",
         };
       }
 
@@ -398,13 +420,16 @@ export async function signUp(
       }
     }
 
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("isRegistering");
+    }
     return {
       user: null,
       error: "PROFILE_CREATION_FAILED",
     };
   }
 
-  // Success - user is created and logged in
+  // Success - user profile created
   console.log("Profile created successfully", {
     id: profile.id,
     email: profile.email,
@@ -412,12 +437,16 @@ export async function signUp(
     user_type: profile.user_type,
   });
 
-  // Wait a moment to ensure the profile is fully committed
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  // Clear the registration flag
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("isRegistering");
+  }
 
+  // Return success without user - forces them to login
+  // (User was already signed out immediately after signUp)
   return {
-    user: profileToUser(profile),
-    error: null,
+    user: null,
+    error: "REGISTRATION_SUCCESS",
   };
 }
 

@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +15,7 @@ import { Navigation } from "@/components/navigation"
 import { signIn, formatCollegeEmail } from "@/lib/auth"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react"
+import { Loader2, ArrowLeft, Eye, EyeOff, CheckCircle2 } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -25,8 +25,12 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { refreshUser, user, isAuthenticated } = useAuth()
   const { toast } = useToast()
+
+  // Get success message from URL
+  const successMessage = searchParams.get('message')
 
   // Load remembered email on mount
   useEffect(() => {
@@ -138,6 +142,13 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {successMessage && (
+                <Alert className="bg-green-50 text-green-900 border-green-200">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription>{successMessage}</AlertDescription>
+                </Alert>
+              )}
+              
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>

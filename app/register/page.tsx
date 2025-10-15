@@ -238,6 +238,16 @@ export default function RegisterPage() {
           setTimeout(() => {
             router.push("/login?message=Please check your email to verify your account")
           }, 3000)
+        } else if (error === "REGISTRATION_SUCCESS") {
+          // Registration successful - redirect to login
+          setSuccess(true)
+          toast({
+            title: "Registration Successful!",
+            description: "Your account has been created. Please sign in to continue.",
+          })
+          setTimeout(() => {
+            router.push("/login?message=Registration successful! Please sign in.")
+          }, 2000)
         } else if (error === "PROFILE_CREATION_FAILED") {
           // Auth user created but profile failed - still allow login
           setSuccess(true)
@@ -257,26 +267,16 @@ export default function RegisterPage() {
             variant: "destructive",
           })
         }
-      } else if (user) {
-        // Successfully registered and logged in
+      } else {
+        // No error and no user returned - this means registration successful
         setSuccess(true)
         toast({
           title: "Registration Successful!",
-          description: "Welcome to NCIT Hub! Redirecting...",
+          description: "Your account has been created. Please sign in to continue.",
         })
-        // Refresh user context
-        await refreshUser()
         setTimeout(() => {
-          router.push("/profile")
-        }, 1500)
-      } else {
-        // No error but no user - shouldn't happen
-        setError("Registration failed. Please try again.")
-        toast({
-          title: "Registration Failed",
-          description: "Something went wrong. Please try again.",
-          variant: "destructive",
-        })
+          router.push("/login?message=Registration successful! Please sign in.")
+        }, 2000)
       }
     } catch (err) {
       const errorMsg = "An unexpected error occurred"
