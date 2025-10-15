@@ -3,46 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Navigation } from "@/components/navigation"
 import Link from "next/link"
 import { ArrowLeft, Mail, Phone, MapPin, Clock } from "lucide-react"
 
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-8">
-              <Link href="/" className="text-xl font-bold text-primary">
-                College Hub
-              </Link>
-              <div className="hidden md:flex space-x-6">
-                <Link href="/" className="text-muted-foreground hover:text-primary transition-colors">
-                  Home
-                </Link>
-                <Link href="/blogs" className="text-muted-foreground hover:text-primary transition-colors">
-                  Blogs
-                </Link>
-                <Link href="/events" className="text-muted-foreground hover:text-primary transition-colors">
-                  Events
-                </Link>
-                <Link href="/about" className="text-muted-foreground hover:text-primary transition-colors">
-                  About
-                </Link>
-                <Link href="/contact" className="text-foreground hover:text-primary transition-colors">
-                  Contact
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/admin">Admin</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navigation />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -188,6 +156,86 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-card border-t py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-4">NCIT Hub</h3>
+              <p className="text-muted-foreground text-sm">
+                Your central hub for NCIT college news, events, and community updates.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Quick Links</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="/blogs" className="text-muted-foreground hover:text-primary">
+                    Blogs
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/events" className="text-muted-foreground hover:text-primary">
+                    Events
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/about" className="text-muted-foreground hover:text-primary">
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="text-muted-foreground hover:text-primary">
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Categories</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="/blogs?category=academics" className="text-muted-foreground hover:text-primary">
+                    Academics
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/blogs?category=student-life" className="text-muted-foreground hover:text-primary">
+                    Student Life
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/blogs?category=technology" className="text-muted-foreground hover:text-primary">
+                    Technology
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Contact Info</h4>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>📧 info@ncit.edu.np</p>
+                <p>📞 +977-1-5201003</p>
+                <p>📍 Balkumari, Lalitpur, Nepal</p>
+              </div>
+            </div>
+          </div>
+          <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
+            <p>&copy; 2025 NCIT Hub. All rights reserved.</p>
+            <p className="mt-2">
+              Developed by{" "}
+              <Link href="/about#developer" className="text-primary hover:underline">
+                Nepal Tech Community
+              </Link>{" "}
+              | Managed by{" "}
+              <Link href="/about#community" className="text-primary hover:underline">
+                NCIT Students & Faculty
+              </Link>
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
