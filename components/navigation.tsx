@@ -46,8 +46,8 @@ export function Navigation() {
     const items = [...publicNavItems]
     
     if (isAuthenticated && user) {
-      if (user.role === "student") {
-        // Students can write blogs
+      if (user.role === "student" || user.role === "faculty") {
+        // Both students and faculty can write blogs
         items.push({ href: "/create-blog", label: "Write Blog" })
       } else if (user.role === "admin") {
         // Admins get dashboard link in main nav
@@ -72,7 +72,7 @@ export function Navigation() {
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 const isNewForUser = 
-                  (item.href === "/create-blog" && user?.role === "student") ||
+                  (item.href === "/create-blog" && (user?.role === "student" || user?.role === "faculty")) ||
                   (item.href === "/admin" && user?.role === "admin")
                 
                 return (
@@ -140,10 +140,12 @@ export function Navigation() {
                     </Link>
                   </DropdownMenuItem>
 
-                  {user.role === "student" && (
+                  {(user.role === "student" || user.role === "faculty") && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuLabel className="text-xs text-muted-foreground">Student Actions</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+                        {user.role === "faculty" ? "Faculty Actions" : "Student Actions"}
+                      </DropdownMenuLabel>
                       <DropdownMenuItem asChild>
                         <Link href="/create-blog" className="flex items-center cursor-pointer">
                           <Plus className="mr-2 h-4 w-4" />
@@ -277,7 +279,7 @@ export function Navigation() {
                     My Profile
                   </Link>
 
-                  {user.role === "student" && (
+                  {(user.role === "student" || user.role === "faculty") && (
                     <>
                       <Link
                         href="/create-blog"

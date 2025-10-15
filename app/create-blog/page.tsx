@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Navigation } from "@/components/navigation"
-import { StudentGuard } from "@/components/student-guard"
+import { AuthGuard } from "@/components/auth-guard"
 import { ImageUpload } from "@/components/image-upload"
 import { useAuth } from "@/contexts/auth-context"
 import { createBlog, blogCategories, generateExcerpt } from "@/lib/blog"
@@ -102,7 +102,7 @@ export default function CreateBlogPage() {
   }
 
   return (
-    <StudentGuard>
+    <AuthGuard>
       <div className="min-h-screen bg-background">
         <Navigation />
 
@@ -244,6 +244,6 @@ export default function CreateBlogPage() {
           </Card>
         </div>
       </div>
-    </StudentGuard>
+    </AuthGuard>
   )
 }

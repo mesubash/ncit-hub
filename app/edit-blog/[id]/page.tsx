@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Navigation } from "@/components/navigation"
-import { StudentGuard } from "@/components/student-guard"
+import { AuthGuard } from "@/components/auth-guard"
 import { ImageUpload } from "@/components/image-upload"
 import { useAuth } from "@/contexts/auth-context"
 import { getBlogById, updateBlog, blogCategories, generateExcerpt } from "@/lib/blog"
@@ -42,13 +42,13 @@ export default function EditBlogPage() {
   useEffect(() => {
     const loadBlog = async () => {
       try {
-        const blog = await getBlogById(blogId)
-        if (!blog) {
+        const { blog, error: blogError } = await getBlogById(blogId)
+        if (blogError || !blog) {
           setError("Blog not found")
           return
         }
 
-        if (blog.authorId !== user?.id && user?.role !== "admin") {
+        if (blog.author_id !== user?.id && user?.role !== "admin") {
           setError("You don't have permission to edit this blog")
           return
         }
@@ -56,7 +56,7 @@ export default function EditBlogPage() {
         setFormData({
           title: blog.title,
           content: blog.content,
-          category: blog.category,
+          category: blog.category?.name || "",
           tags: blog.tags.join(", "),
           images: blog.images || [], // Load existing images
         })
@@ -110,11 +110,10 @@ export default function EditBlogPage() {
         title: formData.title.trim(),
         content: formData.content.trim(),
         excerpt: generateExcerpt(formData.content.trim()),
-        category: formData.category,
         tags,
         images: formData.images, // Include images in updates
-        status: isDraft ? ("draft" as const) : ("pending" as const),
-      }
+        status: isDraft ? "draft" : "pending",
+      } as any
 
       await updateBlog(blogId, updates)
 
@@ -135,7 +134,7 @@ export default function EditBlogPage() {
 
   if (isLoadingBlog) {
     return (
-      <StudentGuard>
+      <AuthGuard>
         <div className="min-h-screen bg-background">
           <Navigation />
           <div className="max-w-4xl mx-auto px-4 py-16 text-center">
@@ -143,12 +142,12 @@ export default function EditBlogPage() {
             <p className="text-muted-foreground">Loading blog...</p>
           </div>
         </div>
-      </StudentGuard>
+      </AuthGuard>
     )
   }
 
   return (
-    <StudentGuard>
+    <AuthGuard>
       <div className="min-h-screen bg-background">
         <Navigation />
 
@@ -274,6 +273,6 @@ export default function EditBlogPage() {
           </Card>
         </div>
       </div>
-    </StudentGuard>
+    </AuthGuard>
   )
 }
