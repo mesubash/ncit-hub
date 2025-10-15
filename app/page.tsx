@@ -1,9 +1,12 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Navigation } from "@/components/navigation"
 import Link from "next/link"
-import { Calendar, Clock, User, ArrowRight } from "lucide-react"
+import { Calendar, Clock, User, ArrowRight, Plus, LayoutDashboard, Shield } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 const recentBlogs = [
   {
@@ -69,30 +72,195 @@ const upcomingEvents = [
 ]
 
 export default function HomePage() {
+  const { user, isAuthenticated } = useAuth()
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      {/* Hero Section */}
+      {/* Hero Section - Different content based on auth state */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance">Welcome to NCIT Hub</h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto text-pretty">
-            Your central destination for NCIT college news, events, and community updates. Stay connected with campus
-            life and never miss what matters most in Nepal's premier technology institute.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild>
-              <Link href="/blogs">
-                Explore Blogs <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/events">View Events</Link>
-            </Button>
-          </div>
+          {isAuthenticated && user ? (
+            <>
+              <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance">
+                Welcome back, {user.name || user.email.split('@')[0]}!
+              </h1>
+              <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto text-pretty">
+                {user.role === "admin" 
+                  ? "Manage content, review submissions, and oversee NCIT Hub's operations."
+                  : "Share your thoughts, explore campus news, and connect with the NCIT community."}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                {user.role === "student" && (
+                  <>
+                    <Button size="lg" asChild>
+                      <Link href="/create-blog">
+                        <Plus className="mr-2 h-5 w-5" />
+                        Write a Blog Post
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="lg" asChild>
+                      <Link href="/blogs">Explore Blogs</Link>
+                    </Button>
+                  </>
+                )}
+                {user.role === "admin" && (
+                  <>
+                    <Button size="lg" asChild>
+                      <Link href="/admin">
+                        <LayoutDashboard className="mr-2 h-5 w-5" />
+                        Admin Dashboard
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="lg" asChild>
+                      <Link href="/admin/review">
+                        <Shield className="mr-2 h-5 w-5" />
+                        Review Content
+                      </Link>
+                    </Button>
+                  </>
+                )}
+                <Button variant="secondary" size="lg" asChild>
+                  <Link href="/events">View Events</Link>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance">
+                Welcome to NCIT Hub
+              </h1>
+              <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto text-pretty">
+                Your central destination for NCIT college news, events, and community updates. Stay connected with campus
+                life and never miss what matters most in Nepal's premier technology institute.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button size="lg" asChild>
+                  <Link href="/register">
+                    Join NCIT Hub <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button variant="outline" size="lg" asChild>
+                  <Link href="/blogs">Explore Blogs</Link>
+                </Button>
+                <Button variant="secondary" size="lg" asChild>
+                  <Link href="/events">View Events</Link>
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </section>
+
+      {/* Quick Access Section - Only for authenticated users */}
+      {isAuthenticated && user && (
+        <section className="py-12 px-4 sm:px-6 lg:px-8 bg-primary/5">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Quick Access</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {user.role === "student" && (
+                <>
+                  <Link href="/create-blog">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <Plus className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">Write Blog</CardTitle>
+                            <CardDescription>Share your thoughts</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                  <Link href="/blogs?author=me">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-500/10 rounded-lg">
+                            <User className="h-6 w-6 text-blue-500" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">My Posts</CardTitle>
+                            <CardDescription>View your blogs</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                </>
+              )}
+              {user.role === "admin" && (
+                <>
+                  <Link href="/admin">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <LayoutDashboard className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">Dashboard</CardTitle>
+                            <CardDescription>Admin overview</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                  <Link href="/admin/review">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-orange-500/10 rounded-lg">
+                            <Shield className="h-6 w-6 text-orange-500" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">Review</CardTitle>
+                            <CardDescription>Pending content</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                  <Link href="/admin/blogs">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-green-500/10 rounded-lg">
+                            <Calendar className="h-6 w-6 text-green-500" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">Manage Blogs</CardTitle>
+                            <CardDescription>Edit & publish</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                </>
+              )}
+              <Link href="/profile">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-500/10 rounded-lg">
+                        <User className="h-6 w-6 text-purple-500" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Profile</CardTitle>
+                        <CardDescription>Edit your info</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Recent Blogs Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30">

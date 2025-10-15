@@ -4,18 +4,21 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Menu, X, User, LogOut, Plus } from "lucide-react"
+import { Menu, X, User, LogOut, Plus, LayoutDashboard, FileEdit, Calendar, Shield } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
 
-const navItems = [
+// Public navigation items (visible to everyone)
+const publicNavItems = [
   { href: "/", label: "Home" },
   { href: "/blogs", label: "Blogs" },
   { href: "/events", label: "Events" },
@@ -23,17 +26,39 @@ const navItems = [
   { href: "/contact", label: "Contact" },
 ]
 
+// Student-specific navigation items
+const studentNavItems = [
+  { href: "/create-blog", label: "Write Blog", icon: Plus },
+]
+
+// Admin-specific navigation items
+const adminNavItems = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+]
+
 export function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  // Ensure user?.role includes "student" in its type
-  type UserRole = "user" | "admin" | "student";
-  type UserType = { name?: string; role?: UserRole };
-  const { user, isAuthenticated, signOut } = useAuth() as {
-    user?: UserType;
-    isAuthenticated: boolean;
-    signOut: () => void;
+  const { user, isAuthenticated, signOut } = useAuth()
+
+  // Combine navigation items based on role
+  const getNavItems = () => {
+    const items = [...publicNavItems]
+    
+    if (isAuthenticated && user) {
+      if (user.role === "student") {
+        // Students can write blogs
+        items.push({ href: "/create-blog", label: "Write Blog" })
+      } else if (user.role === "admin") {
+        // Admins get dashboard link in main nav
+        items.push({ href: "/admin", label: "Admin" })
+      }
+    }
+    
+    return items
   }
+
+  const navItems = getNavItems()
 
   return (
     <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -61,39 +86,85 @@ export function Navigation() {
           <div className="flex items-center space-x-4">
             <ThemeToggle />
 
-            {isAuthenticated ? (
+            {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
                     <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">{user?.name}</span>
+                    <span className="hidden sm:inline">{user.name || user.email.split('@')[0]}</span>
+                    <Badge variant={user.role === "admin" ? "destructive" : "secondary"} className="hidden md:inline-flex ml-1">
+                      {user.role}
+                    </Badge>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.name || "User"}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
                   <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center">
+                    <Link href="/profile" className="flex items-center cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
-                      Profile
+                      My Profile
                     </Link>
                   </DropdownMenuItem>
-                  {user?.role === "student" && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/create-blog" className="flex items-center">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create Blog
-                      </Link>
-                    </DropdownMenuItem>
+
+                  {user.role === "student" && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Student Actions</DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                        <Link href="/create-blog" className="flex items-center cursor-pointer">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create Blog Post
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/blogs?author=me" className="flex items-center cursor-pointer">
+                          <FileEdit className="mr-2 h-4 w-4" />
+                          My Blog Posts
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
-                  {user?.role === "admin" && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin" className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
-                        Admin Dashboard
-                      </Link>
-                    </DropdownMenuItem>
+
+                  {user.role === "admin" && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Admin Actions</DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin" className="flex items-center cursor-pointer">
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          Admin Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/blogs" className="flex items-center cursor-pointer">
+                          <FileEdit className="mr-2 h-4 w-4" />
+                          Manage Blogs
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/events" className="flex items-center cursor-pointer">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          Manage Events
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/review" className="flex items-center cursor-pointer">
+                          <Shield className="mr-2 h-4 w-4" />
+                          Review Content
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
+
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut} className="flex items-center text-destructive">
+                  <DropdownMenuItem onClick={signOut} className="flex items-center text-destructive cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
@@ -126,30 +197,110 @@ export function Navigation() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t py-4">
             <div className="flex flex-col space-y-2">
+              {/* Navigation Links */}
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-2 py-1 transition-colors ${
-                    pathname === item.href ? "text-foreground" : "text-muted-foreground hover:text-primary"
+                  className={`px-2 py-2 rounded transition-colors ${
+                    pathname === item.href 
+                      ? "bg-primary/10 text-foreground font-medium" 
+                      : "text-muted-foreground hover:text-primary hover:bg-muted"
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
-              {!isAuthenticated && (
+
+              {/* Authenticated User Menu */}
+              {isAuthenticated && user ? (
+                <>
+                  <div className="border-t pt-2 mt-2">
+                    <div className="px-2 py-2 text-sm text-muted-foreground">
+                      {user.name || user.email.split('@')[0]} 
+                      <Badge variant={user.role === "admin" ? "destructive" : "secondary"} className="ml-2">
+                        {user.role}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <Link
+                    href="/profile"
+                    className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    My Profile
+                  </Link>
+
+                  {user.role === "student" && (
+                    <>
+                      <Link
+                        href="/create-blog"
+                        className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Create Blog Post
+                      </Link>
+                      <Link
+                        href="/blogs?author=me"
+                        className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        My Blog Posts
+                      </Link>
+                    </>
+                  )}
+
+                  {user.role === "admin" && (
+                    <>
+                      <div className="px-2 py-1 text-xs text-muted-foreground font-semibold">Admin</div>
+                      <Link
+                        href="/admin"
+                        className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
+                        href="/admin/blogs"
+                        className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Manage Blogs
+                      </Link>
+                      <Link
+                        href="/admin/events"
+                        className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Manage Events
+                      </Link>
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      signOut()
+                      setMobileMenuOpen(false)
+                    }}
+                    className="px-2 py-2 text-left text-destructive hover:bg-destructive/10 rounded"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
                 <>
                   <Link
                     href="/login"
-                    className="px-2 py-1 text-muted-foreground hover:text-primary"
+                    className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Sign In
                   </Link>
                   <Link
                     href="/register"
-                    className="px-2 py-1 text-muted-foreground hover:text-primary"
+                    className="px-2 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded text-center"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Register
