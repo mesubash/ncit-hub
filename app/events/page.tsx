@@ -19,7 +19,7 @@ import { getCategories as getBlogCategories, type CategoryRow, stripMarkdown } f
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { Search, Calendar, Clock, MapPin, ArrowLeft, Users, Loader2, UserPlus, UserMinus, Flame } from "lucide-react"
+import { Search, Calendar, Clock, MapPin, ArrowLeft, Users, Loader2, UserPlus, UserMinus, Flame, AlertTriangle } from "lucide-react"
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
@@ -28,6 +28,7 @@ export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedStatus, setSelectedStatus] = useState("upcoming") // Default to upcoming
+  const [showOnlyMyParticipations, setShowOnlyMyParticipations] = useState(false)
   const [registeredEvents, setRegisteredEvents] = useState<string[]>([])
   const [registrationLoading, setRegistrationLoading] = useState<string[]>([])
   const { user } = useAuth()
@@ -173,7 +174,10 @@ export default function EventsPage() {
     const isAdmin = user && user.role === "admin"
     const allowedByRole = isAdmin || event.status === "upcoming" || event.status === "completed"
     
-    return matchesSearch && matchesCategory && matchesStatusFilter && allowedByRole
+    // Filter by user's participations
+    const matchesParticipationFilter = !showOnlyMyParticipations || registeredEvents.includes(event.id)
+    
+    return matchesSearch && matchesCategory && matchesStatusFilter && allowedByRole && matchesParticipationFilter
   }).sort((a, b) => {
     // Sort order: upcoming first, then completed, then others
     const statusOrder = { upcoming: 1, completed: 2, ongoing: 3, cancelled: 4, postponed: 5, draft: 6 }
@@ -341,6 +345,22 @@ export default function EventsPage() {
                   )}
                 </div>
               </div>
+
+              {/* My Participations Filter - Only show for logged in users */}
+              {user && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Filter by Participation</p>
+                  <Button
+                    variant={showOnlyMyParticipations ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowOnlyMyParticipations(!showOnlyMyParticipations)}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    My Participations
+                    {showOnlyMyParticipations && ` (${registeredEvents.length})`}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Results Count */}
@@ -349,6 +369,7 @@ export default function EventsPage() {
                 Showing {filteredEvents.length} of {events.length} events
                 {selectedCategory !== "All" && ` in ${selectedCategory}`}
                 {selectedStatus !== "all" && ` • ${selectedStatus}`}
+                {showOnlyMyParticipations && ` • My Participations`}
               </p>
             </div>
 
@@ -374,6 +395,11 @@ export default function EventsPage() {
                   const isEventFull = !!(event.max_participants && event.current_participants >= event.max_participants)
                   const isUpcoming = event.status === "upcoming"
                   const isHot = isUpcoming && !isPastEvent
+                  
+                  // Check if event is at least 1 hour away
+                  const currentTime = new Date()
+                  const oneHourFromNow = new Date(currentTime.getTime() + 60 * 60 * 1000)
+                  const canCancelRegistration = isRegistered && isUpcoming && eventDate > oneHourFromNow
 
                   return (
                     <Card
@@ -456,32 +482,44 @@ export default function EventsPage() {
 
                         {/* Registration Button */}
                         {user && !isPastEvent && event.status !== "cancelled" && event.status !== "completed" && (
-                          <Button
-                            onClick={() => handleRegistration(event.id)}
-                            disabled={isLoadingRegistration || (!isRegistered && isEventFull)}
-                            variant={isRegistered ? "outline" : "default"}
-                            size="sm"
-                            className={`w-full ${
-                              isHot && !isRegistered 
-                                ? "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white" 
-                                : ""
-                            }`}
-                          >
-                            {isLoadingRegistration ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : isRegistered ? (
-                              <UserMinus className="h-4 w-4 mr-2" />
-                            ) : (
-                              <UserPlus className="h-4 w-4 mr-2" />
+                          <>
+                            <Button
+                              onClick={() => handleRegistration(event.id)}
+                              disabled={isLoadingRegistration || (!isRegistered && isEventFull) || (isRegistered && !canCancelRegistration)}
+                              variant={isRegistered ? "outline" : "default"}
+                              size="sm"
+                              className={`w-full ${
+                                isHot && !isRegistered 
+                                  ? "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white" 
+                                  : ""
+                              }`}
+                            >
+                              {isLoadingRegistration ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : isRegistered ? (
+                                canCancelRegistration ? (
+                                  <UserMinus className="h-4 w-4 mr-2" />
+                                ) : null
+                              ) : (
+                                <UserPlus className="h-4 w-4 mr-2" />
+                              )}
+                              {isLoadingRegistration
+                                ? "Processing..."
+                                : isRegistered
+                                  ? canCancelRegistration
+                                    ? "Cancel Registration"
+                                    : "Already Registered"
+                                  : isEventFull
+                                    ? "Event Full"
+                                    : "I Will Participate"}
+                            </Button>
+                            {isRegistered && !canCancelRegistration && (
+                              <p className="text-xs text-muted-foreground mt-2 text-center">
+                                <AlertTriangle className="h-3 w-3 inline mr-1" />
+                                Cancellation not available (event starts in less than 1 hour)
+                              </p>
                             )}
-                            {isLoadingRegistration
-                              ? "Processing..."
-                              : isRegistered
-                                ? "Cancel Registration"
-                                : isEventFull
-                                  ? "Event Full"
-                                  : "I Will Participate"}
-                          </Button>
+                          </>
                         )}
 
                         {!user && !isPastEvent && event.status !== "cancelled" && event.status !== "completed" && (

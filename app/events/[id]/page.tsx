@@ -261,6 +261,11 @@ export default function EventDetailPage() {
   const isPastEvent = eventDate < new Date()
   const isEventFull = event.max_participants ? event.current_participants >= event.max_participants : false
   const isMultiDay = endDate && endDate.getTime() !== eventDate.getTime()
+  
+  // Check if event is at least 1 hour away for cancellation eligibility
+  const currentTime = new Date()
+  const oneHourFromNow = new Date(currentTime.getTime() + 60 * 60 * 1000)
+  const canCancelRegistration = isRegistered && event.status === "upcoming" && eventDate > oneHourFromNow
 
   return (
     <div className="min-h-screen bg-background">
@@ -428,39 +433,51 @@ export default function EventDetailPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center space-x-2">
-                {user && !isPastEvent && (
-                  <Button
-                    onClick={handleRegistration}
-                    disabled={isRegistering || (!isRegistered && isEventFull)}
-                    variant={isRegistered ? "outline" : "default"}
-                  >
-                    {isRegistering ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : isRegistered ? (
-                      <UserMinus className="h-4 w-4 mr-2" />
-                    ) : (
-                      <UserPlus className="h-4 w-4 mr-2" />
-                    )}
-                    {isRegistering
-                      ? "Processing..."
-                      : isRegistered
-                        ? "Cancel Registration"
-                        : isEventFull
-                          ? "Event Full"
-                          : "Register"}
-                  </Button>
-                )}
+              <div className="flex flex-col items-end space-y-2">
+                <div className="flex items-center space-x-2">
+                  {user && !isPastEvent && event.status !== "cancelled" && event.status !== "completed" && (
+                    <Button
+                      onClick={handleRegistration}
+                      disabled={isRegistering || (!isRegistered && isEventFull) || (isRegistered && !canCancelRegistration)}
+                      variant={isRegistered ? "outline" : "default"}
+                    >
+                      {isRegistering ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : isRegistered ? (
+                        canCancelRegistration ? (
+                          <UserMinus className="h-4 w-4 mr-2" />
+                        ) : null
+                      ) : (
+                        <UserPlus className="h-4 w-4 mr-2" />
+                      )}
+                      {isRegistering
+                        ? "Processing..."
+                        : isRegistered
+                          ? canCancelRegistration
+                            ? "Cancel Registration"
+                            : "Already Registered"
+                          : isEventFull
+                            ? "Event Full"
+                            : "Register"}
+                    </Button>
+                  )}
 
-                {!user && !isPastEvent && (
-                  <Button variant="outline" asChild>
-                    <Link href="/login">Login to Register</Link>
-                  </Button>
-                )}
+                  {!user && !isPastEvent && (
+                    <Button variant="outline" asChild>
+                      <Link href="/login">Login to Register</Link>
+                    </Button>
+                  )}
 
-                <Button variant="outline" size="icon" onClick={handleShare}>
-                  <Share2 className="h-4 w-4" />
-                </Button>
+                  <Button variant="outline" size="icon" onClick={handleShare}>
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                {isRegistered && !canCancelRegistration && (
+                  <p className="text-xs text-muted-foreground flex items-center">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Cancellation not available (event starts in less than 1 hour)
+                  </p>
+                )}
               </div>
             </div>
           )}
