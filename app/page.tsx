@@ -64,7 +64,7 @@ export default function HomePage() {
                   : "Share your thoughts, explore campus news, and connect with the NCIT community."}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                {user.role === "student" && (
+                {(user.role === "student" || user.role === "faculty") && (
                   <>
                     <Button size="lg" asChild>
                       <Link href="/create-blog">
@@ -131,7 +131,7 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto">
             <h2 className="text-2xl font-bold text-foreground mb-6">Quick Access</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {user.role === "student" && (
+              {(user.role === "student" || user.role === "faculty") && (
                 <>
                   <Link href="/create-blog">
                     <Card className="hover:shadow-lg transition-shadow cursor-pointer">

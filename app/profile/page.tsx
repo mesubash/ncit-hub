@@ -8,11 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Navigation } from "@/components/navigation"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { useAuth } from "@/contexts/auth-context"
 import { getBlogsByAuthor, type Blog } from "@/lib/blog"
-import { ArrowLeft, Plus, Edit, Eye, Clock, CheckCircle, XCircle, User, Settings, Loader2, GraduationCap, Briefcase, BookOpen, Calendar } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+import { 
+  ArrowLeft, Plus, Edit, Eye, Clock, CheckCircle, XCircle, User, Settings, 
+  Loader2, GraduationCap, Briefcase, BookOpen, Calendar, Github, Linkedin, 
+  Twitter, Globe, Instagram, Facebook, X as XIcon 
+} from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -21,18 +28,42 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, refreshUser } = useAuth()
   const router = useRouter()
+  const { toast } = useToast()
   const [userBlogs, setUserBlogs] = useState<Blog[]>([])
   const [displayedBlogs, setDisplayedBlogs] = useState<Blog[]>([])
   const [blogsLoading, setBlogsLoading] = useState(true)
   const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [blogsToShow, setBlogsToShow] = useState(5) // Initial: 5 blogs
   const [profileData, setProfileData] = useState({
-    name: "",
+    full_name: "",
     email: "",
+    bio: "",
+    department: "",
+    user_type: "",
+    program_type: "",
+    semester: "",
+    year: "",
+    specialization: "",
+    social_links: {
+      github: "",
+      linkedin: "",
+      twitter: "",
+      facebook: "",
+      instagram: "",
+      website: "",
+    },
   })
 
   useEffect(() => {
@@ -48,8 +79,23 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       setProfileData({
-        name: user.full_name || "",
+        full_name: user.full_name || "",
         email: user.email,
+        bio: (user as any).bio || "",
+        department: (user as any).department || "",
+        user_type: (user as any).user_type || "",
+        program_type: (user as any).program_type || "",
+        semester: (user as any).semester?.toString() || "",
+        year: (user as any).year?.toString() || "",
+        specialization: (user as any).specialization || "",
+        social_links: (user as any).social_links || {
+          github: "",
+          linkedin: "",
+          twitter: "",
+          facebook: "",
+          instagram: "",
+          website: "",
+        },
       })
       loadUserBlogs()
     }
@@ -81,6 +127,72 @@ export default function ProfilePage() {
   }
 
   const hasMoreBlogs = blogsToShow < userBlogs.length
+
+  const handleSaveProfile = async () => {
+    if (!user) return
+
+    setIsSaving(true)
+    try {
+      const supabase = createClient()
+      
+      // Prepare update data
+      const updateData: any = {
+        full_name: profileData.full_name,
+        bio: profileData.bio,
+        department: profileData.department,
+        social_links: profileData.social_links,
+        updated_at: new Date().toISOString(),
+      }
+
+      // Add role-specific fields
+      if (user.role === "student") {
+        updateData.user_type = profileData.user_type
+        updateData.program_type = profileData.program_type
+        
+        if (profileData.program_type === "bachelor") {
+          updateData.semester = profileData.semester ? parseInt(profileData.semester) : null
+          updateData.year = null
+        } else if (profileData.program_type === "master") {
+          updateData.year = profileData.year ? parseInt(profileData.year) : null
+          updateData.semester = null
+        }
+        
+        if (profileData.program_type === "master") {
+          updateData.specialization = profileData.specialization
+        }
+      } else if (user.role === "faculty") {
+        updateData.specialization = profileData.specialization
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .update(updateData)
+        .eq("id", user.id)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      })
+      
+      setIsEditingProfile(false)
+      
+      // Refresh user data
+      if (refreshUser) {
+        await refreshUser()
+      }
+    } catch (error: any) {
+      console.error("Error updating profile:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -164,47 +276,278 @@ export default function ProfilePage() {
                     Edit Profile
                   </Button>
                 </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Edit Profile</DialogTitle>
                   <DialogDescription>
-                    Update your profile information. Note: Email changes require admin approval.
+                    Update your profile information and social links.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="profile-name">Full Name</Label>
-                    <Input
-                      id="profile-name"
-                      value={profileData.name}
-                      onChange={(e) => setProfileData((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="Enter your full name"
-                    />
+                <div className="space-y-6">
+                  {/* Basic Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold">Basic Information</h3>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="profile-name">Full Name *</Label>
+                      <Input
+                        id="profile-name"
+                        value={profileData.full_name}
+                        onChange={(e) => setProfileData((prev) => ({ ...prev, full_name: e.target.value }))}
+                        placeholder="Enter your full name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="profile-email">Email</Label>
+                      <Input
+                        id="profile-email"
+                        value={profileData.email}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Email changes require admin approval
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="profile-bio">Bio</Label>
+                      <Textarea
+                        id="profile-bio"
+                        value={profileData.bio}
+                        onChange={(e) => setProfileData((prev) => ({ ...prev, bio: e.target.value }))}
+                        placeholder="Tell us about yourself..."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="profile-department">Department</Label>
+                      <Input
+                        id="profile-department"
+                        value={profileData.department}
+                        onChange={(e) => setProfileData((prev) => ({ ...prev, department: e.target.value }))}
+                        placeholder="e.g., Computer Science, Information Technology"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profile-email">Email</Label>
-                    <Input
-                      id="profile-email"
-                      value={profileData.email}
-                      onChange={(e) => setProfileData((prev) => ({ ...prev, email: e.target.value }))}
-                      placeholder="your.email@ncit.edu.np"
-                      disabled
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Email changes are currently disabled. Contact admin for email updates.
-                    </p>
+
+                  {/* Student-specific fields */}
+                  {user.role === "student" && (
+                    <div className="space-y-4 border-t pt-4">
+                      <h3 className="text-sm font-semibold">Academic Information</h3>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="user-type">Student Type</Label>
+                        <Select
+                          value={profileData.user_type}
+                          onValueChange={(value) => setProfileData((prev) => ({ ...prev, user_type: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select student type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bachelor_student">Bachelor Student</SelectItem>
+                            <SelectItem value="master_student">Master Student</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {profileData.user_type && (
+                        <div className="space-y-2">
+                          <Label htmlFor="program-type">Program Type</Label>
+                          <Select
+                            value={profileData.program_type}
+                            onValueChange={(value) => setProfileData((prev) => ({ ...prev, program_type: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select program" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="bachelor">Bachelor</SelectItem>
+                              <SelectItem value="master">Master</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {profileData.program_type === "bachelor" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="semester">Semester (1-8)</Label>
+                          <Input
+                            id="semester"
+                            type="number"
+                            min="1"
+                            max="8"
+                            value={profileData.semester}
+                            onChange={(e) => setProfileData((prev) => ({ ...prev, semester: e.target.value }))}
+                            placeholder="Enter semester"
+                          />
+                        </div>
+                      )}
+
+                      {profileData.program_type === "master" && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="year">Year (1-2)</Label>
+                            <Input
+                              id="year"
+                              type="number"
+                              min="1"
+                              max="2"
+                              value={profileData.year}
+                              onChange={(e) => setProfileData((prev) => ({ ...prev, year: e.target.value }))}
+                              placeholder="Enter year"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="specialization">Specialization</Label>
+                            <Input
+                              id="specialization"
+                              value={profileData.specialization}
+                              onChange={(e) => setProfileData((prev) => ({ ...prev, specialization: e.target.value }))}
+                              placeholder="e.g., Data Science, AI/ML"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Faculty-specific fields */}
+                  {user.role === "faculty" && (
+                    <div className="space-y-4 border-t pt-4">
+                      <h3 className="text-sm font-semibold">Faculty Information</h3>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="specialization">Area of Expertise</Label>
+                        <Input
+                          id="specialization"
+                          value={profileData.specialization}
+                          onChange={(e) => setProfileData((prev) => ({ ...prev, specialization: e.target.value }))}
+                          placeholder="e.g., Machine Learning, Software Engineering"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Social Links */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-sm font-semibold">Social Links</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="github" className="flex items-center gap-2">
+                          <Github className="h-4 w-4" />
+                          GitHub
+                        </Label>
+                        <Input
+                          id="github"
+                          value={profileData.social_links.github}
+                          onChange={(e) => setProfileData((prev) => ({ 
+                            ...prev, 
+                            social_links: { ...prev.social_links, github: e.target.value }
+                          }))}
+                          placeholder="https://github.com/username"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="linkedin" className="flex items-center gap-2">
+                          <Linkedin className="h-4 w-4" />
+                          LinkedIn
+                        </Label>
+                        <Input
+                          id="linkedin"
+                          value={profileData.social_links.linkedin}
+                          onChange={(e) => setProfileData((prev) => ({ 
+                            ...prev, 
+                            social_links: { ...prev.social_links, linkedin: e.target.value }
+                          }))}
+                          placeholder="https://linkedin.com/in/username"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="twitter" className="flex items-center gap-2">
+                          <Twitter className="h-4 w-4" />
+                          Twitter/X
+                        </Label>
+                        <Input
+                          id="twitter"
+                          value={profileData.social_links.twitter}
+                          onChange={(e) => setProfileData((prev) => ({ 
+                            ...prev, 
+                            social_links: { ...prev.social_links, twitter: e.target.value }
+                          }))}
+                          placeholder="https://twitter.com/username"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="facebook" className="flex items-center gap-2">
+                          <Facebook className="h-4 w-4" />
+                          Facebook
+                        </Label>
+                        <Input
+                          id="facebook"
+                          value={profileData.social_links.facebook}
+                          onChange={(e) => setProfileData((prev) => ({ 
+                            ...prev, 
+                            social_links: { ...prev.social_links, facebook: e.target.value }
+                          }))}
+                          placeholder="https://facebook.com/username"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="instagram" className="flex items-center gap-2">
+                          <Instagram className="h-4 w-4" />
+                          Instagram
+                        </Label>
+                        <Input
+                          id="instagram"
+                          value={profileData.social_links.instagram}
+                          onChange={(e) => setProfileData((prev) => ({ 
+                            ...prev, 
+                            social_links: { ...prev.social_links, instagram: e.target.value }
+                          }))}
+                          placeholder="https://instagram.com/username"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="website" className="flex items-center gap-2">
+                          <Globe className="h-4 w-4" />
+                          Website
+                        </Label>
+                        <Input
+                          id="website"
+                          value={profileData.social_links.website}
+                          onChange={(e) => setProfileData((prev) => ({ 
+                            ...prev, 
+                            social_links: { ...prev.social_links, website: e.target.value }
+                          }))}
+                          placeholder="https://yourwebsite.com"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setIsEditingProfile(false)}>
+
+                  <div className="flex justify-end space-x-2 pt-4 border-t">
+                    <Button variant="outline" onClick={() => setIsEditingProfile(false)} disabled={isSaving}>
                       Cancel
                     </Button>
-                    <Button
-                      onClick={() => {
-                        // Here you would typically update the user profile
-                        setIsEditingProfile(false)
-                      }}
-                    >
-                      Save Changes
+                    <Button onClick={handleSaveProfile} disabled={isSaving}>
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Changes"
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -337,6 +680,93 @@ export default function ProfilePage() {
                   <p className="text-lg font-semibold">{new Date(user.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
+
+              {/* Bio */}
+              {(user as any).bio && (
+                <div className="border-t pt-6">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">About</p>
+                    <p className="text-base leading-relaxed text-foreground">{(user as any).bio}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Social Links */}
+              {(user as any).social_links && Object.values((user as any).social_links).some((link: any) => link) && (
+                <div className="border-t pt-6">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">Connect With Me</p>
+                    <div className="flex flex-wrap gap-3">
+                      {(user as any).social_links.github && (
+                        <a
+                          href={(user as any).social_links.github}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                          <Github className="h-4 w-4" />
+                          <span className="text-sm font-medium">GitHub</span>
+                        </a>
+                      )}
+                      {(user as any).social_links.linkedin && (
+                        <a
+                          href={(user as any).social_links.linkedin}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+                        >
+                          <Linkedin className="h-4 w-4" />
+                          <span className="text-sm font-medium">LinkedIn</span>
+                        </a>
+                      )}
+                      {(user as any).social_links.twitter && (
+                        <a
+                          href={(user as any).social_links.twitter}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-lg transition-colors"
+                        >
+                          <Twitter className="h-4 w-4" />
+                          <span className="text-sm font-medium">Twitter</span>
+                        </a>
+                      )}
+                      {(user as any).social_links.facebook && (
+                        <a
+                          href={(user as any).social_links.facebook}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg transition-colors"
+                        >
+                          <Facebook className="h-4 w-4" />
+                          <span className="text-sm font-medium">Facebook</span>
+                        </a>
+                      )}
+                      {(user as any).social_links.instagram && (
+                        <a
+                          href={(user as any).social_links.instagram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-pink-50 dark:bg-pink-900/20 hover:bg-pink-100 dark:hover:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-lg transition-colors"
+                        >
+                          <Instagram className="h-4 w-4" />
+                          <span className="text-sm font-medium">Instagram</span>
+                        </a>
+                      )}
+                      {(user as any).social_links.website && (
+                        <a
+                          href={(user as any).social_links.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg transition-colors"
+                        >
+                          <Globe className="h-4 w-4" />
+                          <span className="text-sm font-medium">Website</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -353,6 +353,16 @@ function CommentItem({ comment, blogId, onUpdate, depth = 0 }: CommentItemProps)
                 Admin
               </Badge>
             )}
+            {comment.author?.role === "faculty" && (
+              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                Faculty
+              </Badge>
+            )}
+            {comment.author?.role === "student" && (
+              <Badge variant="outline" className="text-xs">
+                Student
+              </Badge>
+            )}
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
             </span>
