@@ -571,3 +571,42 @@ export function generateSlug(title: string): string {
     .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
     .substring(0, 100); // Limit length
 }
+
+// Increment blog view count
+export async function incrementBlogView(
+  blogId: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createClient();
+
+  // Increment the view count atomically
+  const { error } = await supabase.rpc("increment_blog_views", {
+    blog_id: blogId,
+  });
+
+  if (error) {
+    console.error("Error incrementing blog view:", error);
+    // Fallback: try manual increment if RPC doesn't exist
+    const { data: blog, error: fetchError } = await supabase
+      .from("blogs")
+      .select("views")
+      .eq("id", blogId)
+      .single();
+
+    if (fetchError || !blog) {
+      return { success: false, error: fetchError?.message || "Blog not found" };
+    }
+
+    const { error: updateError } = await supabase
+      .from("blogs")
+      .update({ views: (blog.views || 0) + 1 })
+      .eq("id", blogId);
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true, error: null };
+  }
+
+  return { success: true, error: null };
+}

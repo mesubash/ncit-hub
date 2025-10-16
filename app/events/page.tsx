@@ -18,7 +18,7 @@ import {
 import { getCategories as getBlogCategories, type CategoryRow, stripMarkdown } from "@/lib/blog"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
-import { Search, Calendar, Clock, MapPin, ArrowLeft, Users, Loader2, UserPlus, UserMinus } from "lucide-react"
+import { Search, Calendar, Clock, MapPin, ArrowLeft, Users, Loader2, UserPlus, UserMinus, Flame } from "lucide-react"
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
@@ -129,7 +129,12 @@ export default function EventsPage() {
       selectedCategory === "All" ||
       (event.category && event.category.name === selectedCategory) ||
       (!event.category && selectedCategory === "Uncategorized")
-    return matchesSearch && matchesCategory
+    
+    // Filter by status: non-admins only see upcoming and completed events
+    const isAdmin = user && user.role === "admin"
+    const matchesStatus = isAdmin || event.status === "upcoming" || event.status === "completed"
+    
+    return matchesSearch && matchesCategory && matchesStatus
   })
 
   const upcomingEvents = events.filter((event) => new Date(event.event_date) > new Date()).slice(0, 3)

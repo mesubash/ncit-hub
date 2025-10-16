@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { Menu, X, User, LogOut, Plus, LayoutDashboard, FileEdit, Calendar, Shield, Sparkles } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -147,7 +148,14 @@ export function Navigation() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                    <User className="h-4 w-4" />
+                    <Avatar className="h-7 w-7">
+                      <AvatarImage src={user.avatar_url || undefined} alt={user.full_name || user.email} />
+                      <AvatarFallback className="text-xs">
+                        {user.full_name 
+                          ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) 
+                          : user.email.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="hidden sm:inline">{user.full_name || user.email.split('@')[0]}</span>
                     <Badge variant={user.role === "admin" ? "destructive" : "secondary"} className="hidden md:inline-flex ml-1">
                       {user.role}
@@ -309,11 +317,21 @@ export function Navigation() {
               {isAuthenticated && user ? (
                 <>
                   <div className="border-t pt-2 mt-2">
-                    <div className="px-2 py-2 text-sm text-muted-foreground">
-                      {user.full_name || user.email.split('@')[0]} 
-                      <Badge variant={user.role === "admin" ? "destructive" : "secondary"} className="ml-2">
-                        {user.role}
-                      </Badge>
+                    <div className="px-2 py-2 flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={user.avatar_url || undefined} alt={user.full_name || user.email} />
+                        <AvatarFallback className="text-sm">
+                          {user.full_name 
+                            ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) 
+                            : user.email.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{user.full_name || user.email.split('@')[0]}</p>
+                        <Badge variant={user.role === "admin" ? "destructive" : "secondary"} className="mt-1">
+                          {user.role}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                   
