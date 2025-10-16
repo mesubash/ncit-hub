@@ -83,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         specialization: null,
         bio: null,
         avatar_url: null,
+        social_links: {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -135,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           specialization: profile.specialization,
           bio: profile.bio,
           avatar_url: profile.avatar_url,
+          social_links: profile.social_links || {},
           created_at: profile.created_at,
           updated_at: profile.updated_at,
         };

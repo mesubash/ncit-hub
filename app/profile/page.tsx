@@ -6,11 +6,13 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Navigation } from "@/components/navigation"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
+import { AvatarUpload } from "@/components/avatar-upload"
 import { useAuth } from "@/contexts/auth-context"
 import { getBlogsByAuthor, type Blog } from "@/lib/blog"
 import { createClient } from "@/lib/supabase/client"
@@ -78,6 +80,30 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
+      console.log("Profile: User data loaded", { 
+        hasSocialLinks: !!(user as any).social_links,
+        socialLinksType: typeof (user as any).social_links,
+        socialLinks: (user as any).social_links 
+      });
+      
+      // Parse social_links if it's a string
+      let parsedSocialLinks = (user as any).social_links || {};
+      if (typeof parsedSocialLinks === 'string') {
+        try {
+          parsedSocialLinks = JSON.parse(parsedSocialLinks);
+        } catch (e) {
+          console.error("Failed to parse social_links:", e);
+          parsedSocialLinks = {
+            github: "",
+            linkedin: "",
+            twitter: "",
+            facebook: "",
+            instagram: "",
+            website: "",
+          };
+        }
+      }
+      
       setProfileData({
         full_name: user.full_name || "",
         email: user.email,
@@ -88,14 +114,7 @@ export default function ProfilePage() {
         semester: (user as any).semester?.toString() || "",
         year: (user as any).year?.toString() || "",
         specialization: (user as any).specialization || "",
-        social_links: (user as any).social_links || {
-          github: "",
-          linkedin: "",
-          twitter: "",
-          facebook: "",
-          instagram: "",
-          website: "",
-        },
+        social_links: parsedSocialLinks,
       })
       loadUserBlogs()
     }
@@ -263,9 +282,17 @@ export default function ProfilePage() {
         {/* User Info Card */}
         <Card className="mb-8">
           <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Account Information</CardTitle>
-              <CardDescription>Your NCIT account details</CardDescription>
+            <div className="flex items-center gap-4">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={user.avatar_url || undefined} alt={user.full_name || user.email} />
+                <AvatarFallback className="text-2xl">
+                  {user.full_name ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : user.email.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle>Account Information</CardTitle>
+                <CardDescription>Your NCIT account details</CardDescription>
+              </div>
             </div>
             <div className="flex gap-2">
               <ChangePasswordDialog />
@@ -280,12 +307,25 @@ export default function ProfilePage() {
                 <DialogHeader>
                   <DialogTitle>Edit Profile</DialogTitle>
                   <DialogDescription>
-                    Update your profile information and social links.
+                    Customize your profile to showcase who you are to the NCIT community. Upload a photo, update your bio, add social links, and more.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6">
+                  {/* Avatar Upload */}
+                  <AvatarUpload
+                    currentAvatarUrl={user.avatar_url}
+                    userId={user.id}
+                    userName={user.full_name || user.email}
+                    onAvatarChange={(url) => {
+                      // Refresh user data to update avatar everywhere
+                      if (refreshUser) {
+                        refreshUser()
+                      }
+                    }}
+                  />
+
                   {/* Basic Information */}
-                  <div className="space-y-4">
+                  <div className="space-y-4 border-t pt-4">
                     <h3 className="text-sm font-semibold">Basic Information</h3>
                     
                     <div className="space-y-2">
@@ -557,6 +597,27 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
+              {/* Profile Edit Info Banner */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Settings className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium text-blue-900 dark:text-blue-100">
+                      Customize your profile to showcase who you are to the NCIT community.
+                    </p>
+                    <p className="text-blue-700 dark:text-blue-300">
+                      <strong>What you can update:</strong>
+                    </p>
+                    <ul className="space-y-1 text-blue-700 dark:text-blue-300 ml-4 list-disc">
+                      <li><strong>Profile Picture:</strong> Upload a professional photo (max 2MB)</li>
+                      <li><strong>Basic Info:</strong> Name, bio, and department</li>
+                      <li><strong>Academic Details:</strong> Program type, semester/year, specialization</li>
+                      <li><strong>Social Links:</strong> Connect your GitHub, LinkedIn, Twitter, and more</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               {/* Basic Info */}
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-1">
@@ -692,81 +753,100 @@ export default function ProfilePage() {
               )}
 
               {/* Social Links */}
-              {(user as any).social_links && Object.values((user as any).social_links).some((link: any) => link) && (
-                <div className="border-t pt-6">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-muted-foreground">Connect With Me</p>
-                    <div className="flex flex-wrap gap-3">
-                      {(user as any).social_links.github && (
-                        <a
-                          href={(user as any).social_links.github}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <Github className="h-4 w-4" />
-                          <span className="text-sm font-medium">GitHub</span>
-                        </a>
-                      )}
-                      {(user as any).social_links.linkedin && (
-                        <a
-                          href={(user as any).social_links.linkedin}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
-                        >
-                          <Linkedin className="h-4 w-4" />
-                          <span className="text-sm font-medium">LinkedIn</span>
-                        </a>
-                      )}
-                      {(user as any).social_links.twitter && (
-                        <a
-                          href={(user as any).social_links.twitter}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-lg transition-colors"
-                        >
-                          <Twitter className="h-4 w-4" />
-                          <span className="text-sm font-medium">Twitter</span>
-                        </a>
-                      )}
-                      {(user as any).social_links.facebook && (
-                        <a
-                          href={(user as any).social_links.facebook}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg transition-colors"
-                        >
-                          <Facebook className="h-4 w-4" />
-                          <span className="text-sm font-medium">Facebook</span>
-                        </a>
-                      )}
-                      {(user as any).social_links.instagram && (
-                        <a
-                          href={(user as any).social_links.instagram}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-pink-50 dark:bg-pink-900/20 hover:bg-pink-100 dark:hover:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-lg transition-colors"
-                        >
-                          <Instagram className="h-4 w-4" />
-                          <span className="text-sm font-medium">Instagram</span>
-                        </a>
-                      )}
-                      {(user as any).social_links.website && (
-                        <a
-                          href={(user as any).social_links.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg transition-colors"
-                        >
-                          <Globe className="h-4 w-4" />
-                          <span className="text-sm font-medium">Website</span>
-                        </a>
-                      )}
+              {(() => {
+                let socialLinks = (user as any).social_links;
+                
+                // Parse if it's a string
+                if (typeof socialLinks === 'string') {
+                  try {
+                    socialLinks = JSON.parse(socialLinks);
+                  } catch (e) {
+                    console.error("Failed to parse social_links for display:", e);
+                    socialLinks = null;
+                  }
+                }
+                
+                // Check if any links exist
+                const hasLinks = socialLinks && Object.values(socialLinks).some((link: any) => link);
+                
+                if (!hasLinks) return null;
+                
+                return (
+                  <div className="border-t pt-6">
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-muted-foreground">Connect With Me</p>
+                      <div className="flex flex-wrap gap-3">
+                        {socialLinks.github && (
+                          <a
+                            href={socialLinks.github}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          >
+                            <Github className="h-4 w-4" />
+                            <span className="text-sm font-medium">GitHub</span>
+                          </a>
+                        )}
+                        {socialLinks.linkedin && (
+                          <a
+                            href={socialLinks.linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+                          >
+                            <Linkedin className="h-4 w-4" />
+                            <span className="text-sm font-medium">LinkedIn</span>
+                          </a>
+                        )}
+                        {socialLinks.twitter && (
+                          <a
+                            href={socialLinks.twitter}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-lg transition-colors"
+                          >
+                            <Twitter className="h-4 w-4" />
+                            <span className="text-sm font-medium">Twitter</span>
+                          </a>
+                        )}
+                        {socialLinks.facebook && (
+                          <a
+                            href={socialLinks.facebook}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg transition-colors"
+                          >
+                            <Facebook className="h-4 w-4" />
+                            <span className="text-sm font-medium">Facebook</span>
+                          </a>
+                        )}
+                        {socialLinks.instagram && (
+                          <a
+                            href={socialLinks.instagram}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-pink-50 dark:bg-pink-900/20 hover:bg-pink-100 dark:hover:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-lg transition-colors"
+                          >
+                            <Instagram className="h-4 w-4" />
+                            <span className="text-sm font-medium">Instagram</span>
+                          </a>
+                        )}
+                        {socialLinks.website && (
+                          <a
+                            href={socialLinks.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg transition-colors"
+                          >
+                            <Globe className="h-4 w-4" />
+                            <span className="text-sm font-medium">Website</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
