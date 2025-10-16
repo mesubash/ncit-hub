@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { getEventById, registerForEvent, cancelEventRegistration, isUserRegisteredForEvent, deleteEvent, type Event } from "@/lib/events"
+import { getEventById, registerForEvent, cancelEventRegistration, isUserRegisteredForEvent, deleteEvent, getEventParticipants, type Event } from "@/lib/events"
 // TODO: Enable notifications later
 // import { notifyEventRegistration } from "@/lib/notifications"
 import { useAuth } from "@/contexts/auth-context"
@@ -54,6 +54,8 @@ export default function EventDetailPage() {
   const [isRegistering, setIsRegistering] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [participants, setParticipants] = useState<any[]>([])
+  const [loadingParticipants, setLoadingParticipants] = useState(false)
 
   useEffect(() => {
     loadEvent()
@@ -81,6 +83,11 @@ export default function EventDetailPage() {
       }
 
       setEvent(fetchedEvent)
+      
+      // Load participants if user is admin
+      if (user && user.role === 'admin') {
+        await loadParticipants(eventId)
+      }
     } catch (error) {
       console.error("Error loading event:", error)
       toast({
@@ -90,6 +97,23 @@ export default function EventDetailPage() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadParticipants = async (eventId: string) => {
+    try {
+      setLoadingParticipants(true)
+      const { participants: fetchedParticipants, error } = await getEventParticipants(eventId)
+      
+      if (error) {
+        console.error("Failed to load participants:", error)
+      } else {
+        setParticipants(fetchedParticipants)
+      }
+    } catch (error) {
+      console.error("Error loading participants:", error)
+    } finally {
+      setLoadingParticipants(false)
     }
   }
 
@@ -500,6 +524,59 @@ export default function EventDetailPage() {
                   {new Date(event.registration_deadline) > new Date() ? 'Open' : 'Closed'}
                 </Badge>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Participants List (Admin Only) */}
+        {user && user.role === 'admin' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Registered Participants ({event.current_participants})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingParticipants ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Loading participants...</p>
+                </div>
+              ) : participants.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">No participants yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Be the first to register!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {participants.map((participant) => (
+                    <div key={participant.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={participant.user.avatar_url || undefined} />
+                          <AvatarFallback>
+                            {participant.user.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-foreground">{participant.user.full_name || 'Unknown User'}</p>
+                          <p className="text-sm text-muted-foreground">{participant.user.email}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={participant.status === 'registered' ? 'default' : participant.status === 'attended' ? 'outline' : 'secondary'}>
+                          {participant.status}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(participant.registration_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

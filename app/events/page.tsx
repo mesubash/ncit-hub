@@ -27,6 +27,7 @@ export default function EventsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
+  const [selectedStatus, setSelectedStatus] = useState("upcoming") // Default to upcoming
   const [registeredEvents, setRegisteredEvents] = useState<string[]>([])
   const [registrationLoading, setRegistrationLoading] = useState<string[]>([])
   const { user } = useAuth()
@@ -165,11 +166,14 @@ export default function EventsPage() {
       (event.category && event.category.name === selectedCategory) ||
       (!event.category && selectedCategory === "Uncategorized")
     
-    // Filter by status: non-admins only see upcoming and completed events
-    const isAdmin = user && user.role === "admin"
-    const matchesStatus = isAdmin || event.status === "upcoming" || event.status === "completed"
+    // Filter by selected status
+    const matchesStatusFilter = selectedStatus === "all" || event.status === selectedStatus
     
-    return matchesSearch && matchesCategory && matchesStatus
+    // Admin can see all statuses, non-admin only see upcoming and completed
+    const isAdmin = user && user.role === "admin"
+    const allowedByRole = isAdmin || event.status === "upcoming" || event.status === "completed"
+    
+    return matchesSearch && matchesCategory && matchesStatusFilter && allowedByRole
   }).sort((a, b) => {
     // Sort order: upcoming first, then completed, then others
     const statusOrder = { upcoming: 1, completed: 2, ongoing: 3, cancelled: 4, postponed: 5, draft: 6 }
@@ -268,17 +272,74 @@ export default function EventsPage() {
                 />
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {allCategories.map((category) => (
+              {/* Category Filter */}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Category</p>
+                <div className="flex flex-wrap gap-2">
+                  {allCategories.map((category) => (
+                    <Button
+                      key={category}
+                      variant={category === selectedCategory ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedCategory(category)}
+                    >
+                      {category}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Status</p>
+                <div className="flex flex-wrap gap-2">
                   <Button
-                    key={category}
-                    variant={category === selectedCategory ? "default" : "outline"}
+                    variant={selectedStatus === "all" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setSelectedCategory(category)}
+                    onClick={() => setSelectedStatus("all")}
                   >
-                    {category}
+                    All
                   </Button>
-                ))}
+                  <Button
+                    variant={selectedStatus === "upcoming" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedStatus("upcoming")}
+                  >
+                    Upcoming
+                  </Button>
+                  <Button
+                    variant={selectedStatus === "completed" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedStatus("completed")}
+                  >
+                    Completed
+                  </Button>
+                  {user && user.role === "admin" && (
+                    <>
+                      <Button
+                        variant={selectedStatus === "ongoing" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedStatus("ongoing")}
+                      >
+                        Ongoing
+                      </Button>
+                      <Button
+                        variant={selectedStatus === "cancelled" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedStatus("cancelled")}
+                      >
+                        Cancelled
+                      </Button>
+                      <Button
+                        variant={selectedStatus === "draft" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedStatus("draft")}
+                      >
+                        Draft
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -287,6 +348,7 @@ export default function EventsPage() {
               <p className="text-sm text-muted-foreground">
                 Showing {filteredEvents.length} of {events.length} events
                 {selectedCategory !== "All" && ` in ${selectedCategory}`}
+                {selectedStatus !== "all" && ` • ${selectedStatus}`}
               </p>
             </div>
 
