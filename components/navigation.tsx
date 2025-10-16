@@ -17,6 +17,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 
 // Public navigation items (visible to everyone)
@@ -41,15 +51,22 @@ const adminNavItems = [
 export function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const { user, isAuthenticated, signOut } = useAuth()
+
+  const handleLogout = () => {
+    setShowLogoutDialog(false)
+    setMobileMenuOpen(false)
+    signOut()
+  }
 
   // Combine navigation items based on role
   const getNavItems = () => {
     let items = [...publicNavItems]
     
-    // Remove Contact for admins
-    if (user?.role === 'admin') {
-      items = items.filter(item => item.href !== '/contact')
+    // Hide About and Contact when user is logged in
+    if (isAuthenticated && user) {
+      items = items.filter(item => item.href !== '/about' && item.href !== '/contact')
     }
     
     if (isAuthenticated && user) {
@@ -215,7 +232,10 @@ export function Navigation() {
                   )}
 
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut} className="flex items-center text-destructive cursor-pointer">
+                  <DropdownMenuItem 
+                    onClick={() => setShowLogoutDialog(true)} 
+                    className="flex items-center text-destructive cursor-pointer"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
@@ -352,10 +372,7 @@ export function Navigation() {
                   )}
 
                   <button
-                    onClick={() => {
-                      signOut()
-                      setMobileMenuOpen(false)
-                    }}
+                    onClick={() => setShowLogoutDialog(true)}
                     className="px-2 py-2 text-left text-destructive hover:bg-destructive/10 rounded"
                   >
                     Sign Out
@@ -383,6 +400,24 @@ export function Navigation() {
           </div>
         )}
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out? You'll need to sign in again to access your account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </nav>
   )
 }
