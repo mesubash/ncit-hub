@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS public.events (
     slug TEXT UNIQUE NOT NULL,
     description TEXT NOT NULL,
     organizer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    organizer_name TEXT,  -- Custom organizer name (e.g., "NCIT Computer Club", "Student Council")
     category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
     event_date TIMESTAMP WITH TIME ZONE NOT NULL,
     end_date TIMESTAMP WITH TIME ZONE,  -- Added end date for multi-day events
@@ -388,6 +389,11 @@ ON public.event_registrations FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "Users can cancel their own event registrations"
+ON public.event_registrations FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
 -- Notifications policies
 CREATE POLICY "Users can view their own notifications"
 ON public.notifications FOR SELECT
@@ -456,22 +462,28 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION increment_event_participants(event_id UUID)
-RETURNS void AS $$
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 BEGIN
   UPDATE public.events 
-  SET current_participants = current_participants + 1 
+  SET current_participants = COALESCE(current_participants, 0) + 1 
   WHERE id = event_id;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE OR REPLACE FUNCTION decrement_event_participants(event_id UUID)
-RETURNS void AS $$
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 BEGIN
   UPDATE public.events 
-  SET current_participants = GREATEST(current_participants - 1, 0)
+  SET current_participants = GREATEST(COALESCE(current_participants, 0) - 1, 0)
   WHERE id = event_id;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE OR REPLACE FUNCTION create_notification(
   user_id UUID,
@@ -495,3 +507,9 @@ $$ LANGUAGE plpgsql;
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+
+-- Grant execute permissions for RPC functions
+GRANT EXECUTE ON FUNCTION increment_event_participants(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION decrement_event_participants(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION increment_event_participants(UUID) TO anon;
+GRANT EXECUTE ON FUNCTION decrement_event_participants(UUID) TO anon;

@@ -15,8 +15,6 @@ import { createClient } from "@/lib/supabase/server"
 import { getCurrentUserServer } from "@/lib/auth-server"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { BlogInteractions } from "@/components/blog-interactions"
-import { BlogViewTracker } from "@/components/blog-view-tracker"
-import { Eye } from "lucide-react"
 
 interface BlogPageProps {
   params: {
@@ -75,7 +73,6 @@ export default async function BlogPage({ params }: BlogPageProps) {
   return (
     <>
       <SEOHead structuredData={structuredData} />
-      <BlogViewTracker blogId={blog.id} />
       <div className="min-h-screen bg-background">
         <Navigation />
 
@@ -136,10 +133,6 @@ export default async function BlogPage({ params }: BlogPageProps) {
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-1" />
                       {Math.ceil(blog.content.split(" ").length / 200)} min read
-                    </div>
-                    <div className="flex items-center">
-                      <Eye className="h-4 w-4 mr-1" />
-                      {blog.views.toLocaleString()} {blog.views === 1 ? 'view' : 'views'}
                     </div>
                   </div>
                 </div>

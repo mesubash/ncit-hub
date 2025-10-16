@@ -98,6 +98,21 @@ export default function NewEventPage() {
       // If multi-day, combine end date and time
       const endDateTime = isMultiDay && endDate && endTime ? `${endDate}T${endTime}:00` : undefined
 
+      // Validate status against date
+      const eventDate = new Date(eventDateTime)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (status === "upcoming" && eventDate < today) {
+        toast({
+          title: "Validation Error",
+          description: "Upcoming events must have a date in the future. Please change the date or status.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+
       const { event, error } = await createEvent({
         title,
         description,
@@ -105,6 +120,7 @@ export default function NewEventPage() {
         end_date: endDateTime,
         location,
         organizer_id: user.id,
+        organizer_name: organizer, // Pass the custom organizer name
         category_id: category || undefined,
         max_participants: capacity ? parseInt(capacity) : undefined,
         status: status as "upcoming" | "ongoing" | "completed" | "cancelled",

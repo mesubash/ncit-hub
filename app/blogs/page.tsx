@@ -12,7 +12,7 @@ import { getCommentCount } from "@/lib/comments"
 import { getUserBookmarkedBlogIds, toggleBookmark } from "@/lib/bookmarks"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
-import { Search, User, Calendar, ArrowLeft, Heart, MessageCircle, Bookmark, TrendingUp, Loader2, Plus, Eye } from "lucide-react"
+import { Search, User, Calendar, ArrowLeft, Heart, MessageCircle, Bookmark, TrendingUp, Loader2, Plus } from "lucide-react"
 
 export default function BlogsPage() {
   const [blogs, setBlogs] = useState<Blog[]>([])
@@ -423,10 +423,6 @@ export default function BlogsPage() {
                           <div className="flex items-center space-x-1" title="Comments">
                             <MessageCircle className="h-4 w-4" />
                             <span>{commentCounts[blog.id] || 0}</span>
-                          </div>
-                          <div className="flex items-center space-x-1" title="Views">
-                            <Eye className="h-4 w-4" />
-                            <span>{blog.views.toLocaleString()}</span>
                           </div>
                         </div>
                         <button

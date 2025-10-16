@@ -303,9 +303,9 @@ export default function AdminEventsPage() {
                           <TableCell className="font-medium">
                             <div className="max-w-xs">
                               <div className="truncate">{event.title}</div>
-                              {event.organizer && (
+                              {(event.organizer_name || event.organizer) && (
                                 <div className="text-xs text-muted-foreground">
-                                  by {event.organizer.full_name || 'Unknown'}
+                                  by {event.organizer_name || event.organizer?.full_name || 'Unknown'}
                                 </div>
                               )}
                             </div>

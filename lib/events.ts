@@ -13,6 +13,7 @@ export interface Event {
   title: string;
   description: string;
   organizer_id: string;
+  organizer_name?: string | null; // Custom organizer name
   organizer?: {
     id: string;
     full_name: string | null;
@@ -62,6 +63,7 @@ export async function createEvent(eventData: {
   title: string;
   description: string;
   organizer_id: string;
+  organizer_name?: string; // Custom organizer name
   category_id?: string;
   event_date: string;
   end_date?: string;
@@ -99,6 +101,7 @@ export async function createEvent(eventData: {
       slug: slug,
       description: eventData.description,
       organizer_id: eventData.organizer_id,
+      organizer_name: eventData.organizer_name, // Add organizer_name
       category_id: eventData.category_id,
       event_date: eventData.event_date,
       end_date: eventData.end_date,
@@ -430,9 +433,23 @@ export async function registerForEvent(
     return { registration: null, error: error.message };
   }
 
-  // Increment current participants
-  await supabase.rpc("increment_event_participants", { event_id: eventId });
+  // Increment current participants - MUST wait and check for errors
+  const { error: rpcError } = await supabase.rpc(
+    "increment_event_participants",
+    { event_id: eventId }
+  );
 
+  if (rpcError) {
+    console.error("❌ Failed to increment participants:", rpcError);
+    // Rollback the registration if RPC fails
+    await supabase.from("event_registrations").delete().eq("id", data.id);
+    return {
+      registration: null,
+      error: "Failed to update participant count. Please try again.",
+    };
+  }
+
+  console.log("✅ Registration successful, participant count updated");
   return { registration: data, error: null };
 }
 
@@ -443,6 +460,19 @@ export async function cancelEventRegistration(
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
 
+  // First check if registration exists
+  const { data: existingReg } = await supabase
+    .from("event_registrations")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!existingReg) {
+    return { error: "Registration not found" };
+  }
+
+  // Delete the registration
   const { error } = await supabase
     .from("event_registrations")
     .delete()
@@ -450,12 +480,22 @@ export async function cancelEventRegistration(
     .eq("user_id", userId);
 
   if (error) {
+    console.error("❌ Failed to delete registration:", error);
     return { error: error.message };
   }
 
-  // Decrement current participants
-  await supabase.rpc("decrement_event_participants", { event_id: eventId });
+  // Decrement current participants - MUST wait and check for errors
+  const { error: rpcError } = await supabase.rpc(
+    "decrement_event_participants",
+    { event_id: eventId }
+  );
 
+  if (rpcError) {
+    console.error("❌ Failed to decrement participants:", rpcError);
+    return { error: "Failed to update participant count. Please try again." };
+  }
+
+  console.log("✅ Registration cancelled, participant count updated");
   return { error: null };
 }
 
@@ -478,6 +518,61 @@ export async function getUserEventRegistrations(
   return { registrations: data, error: null };
 }
 
+// Get event participants (for admins and event detail pages)
+export async function getEventParticipants(eventId: string): Promise<{
+  participants: Array<{
+    id: string;
+    user: {
+      id: string;
+      full_name: string | null;
+      email: string;
+      avatar_url: string | null;
+    };
+    registration_date: string;
+    status: string;
+  }>;
+  error: string | null;
+}> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("event_registrations")
+    .select(
+      `
+      id,
+      registration_date,
+      status,
+      profiles:user_id (
+        id,
+        full_name,
+        email,
+        avatar_url
+      )
+    `
+    )
+    .eq("event_id", eventId)
+    .order("registration_date", { ascending: false });
+
+  if (error) {
+    return { participants: [], error: error.message };
+  }
+
+  // Transform the data to a cleaner format
+  const participants = data.map((reg: any) => ({
+    id: reg.id,
+    user: {
+      id: reg.profiles.id,
+      full_name: reg.profiles.full_name,
+      email: reg.profiles.email,
+      avatar_url: reg.profiles.avatar_url,
+    },
+    registration_date: reg.registration_date,
+    status: reg.status,
+  }));
+
+  return { participants, error: null };
+}
+
 // Check if user is registered for event
 export async function isUserRegisteredForEvent(
   eventId: string,
@@ -485,14 +580,15 @@ export async function isUserRegisteredForEvent(
 ): Promise<{ registered: boolean; error: string | null }> {
   const supabase = createClient();
 
+  // Use .maybeSingle() instead of .single() to avoid 406 error
   const { data, error } = await supabase
     .from("event_registrations")
     .select("id")
     .eq("event_id", eventId)
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== "PGRST116") {
+  if (error) {
     return { registered: false, error: error.message };
   }
 
@@ -521,6 +617,7 @@ function transformEventData(data: any): Event {
     title: data.title,
     description: data.description,
     organizer_id: data.organizer_id,
+    organizer_name: data.organizer_name,
     organizer: data.profiles
       ? {
           id: data.profiles.id,
@@ -538,6 +635,7 @@ function transformEventData(data: any): Event {
         }
       : undefined,
     event_date: data.event_date,
+    end_date: data.end_date,
     location: data.location,
     max_participants: data.max_participants,
     current_participants: data.current_participants,

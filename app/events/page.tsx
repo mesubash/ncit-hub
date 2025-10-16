@@ -17,6 +17,7 @@ import {
 } from "@/lib/events"
 import { getCategories as getBlogCategories, type CategoryRow, stripMarkdown } from "@/lib/blog"
 import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { Search, Calendar, Clock, MapPin, ArrowLeft, Users, Loader2, UserPlus, UserMinus, Flame } from "lucide-react"
 
@@ -29,6 +30,7 @@ export default function EventsPage() {
   const [registeredEvents, setRegisteredEvents] = useState<string[]>([])
   const [registrationLoading, setRegistrationLoading] = useState<string[]>([])
   const { user } = useAuth()
+  const { toast } = useToast()
 
   useEffect(() => {
     loadData()
@@ -48,6 +50,10 @@ export default function EventsPage() {
         console.error("Failed to load events:", eventsResult.error)
       } else {
         setEvents(eventsResult.events)
+        // Load user registrations with the fresh events data
+        if (user) {
+          await loadUserRegistrations(eventsResult.events)
+        }
       }
 
       if (categoriesResult.error) {
@@ -62,17 +68,22 @@ export default function EventsPage() {
     }
   }
 
-  const loadUserRegistrations = async () => {
+  const loadUserRegistrations = async (eventsList?: Event[]) => {
     if (!user) return
+
+    // Use provided events list or fallback to state
+    const eventsToCheck = eventsList || events
+    if (eventsToCheck.length === 0) return
 
     try {
       const registrations = await Promise.all(
-        events.map(async (event) => {
+        eventsToCheck.map(async (event) => {
           const { registered } = await isUserRegisteredForEvent(event.id, user.id)
           return registered ? event.id : null
         }),
       )
       setRegisteredEvents(registrations.filter(Boolean) as string[])
+      console.log("🔄 User registrations reloaded:", registrations.filter(Boolean))
     } catch (error) {
       console.error("Failed to load user registrations:", error)
     }
@@ -85,36 +96,60 @@ export default function EventsPage() {
 
     try {
       const isRegistered = registeredEvents.includes(eventId)
+      console.log(`🔍 Event ${eventId}: isRegistered = ${isRegistered}, user = ${user.id}`)
 
       if (isRegistered) {
+        // Cancel registration
+        console.log(`🔄 Attempting to cancel registration for event ${eventId}...`)
         const { error } = await cancelEventRegistration(eventId, user.id)
         if (error) {
-          console.error("Failed to cancel registration:", error)
+          console.error("❌ Failed to cancel registration:", error)
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          })
         } else {
-          setRegisteredEvents((prev) => prev.filter((id) => id !== eventId))
-          // Update local event data
-          setEvents((prev) =>
-            prev.map((event) =>
-              event.id === eventId ? { ...event, current_participants: event.current_participants - 1 } : event,
-            ),
-          )
+          // Show success message
+          toast({
+            title: "Registration Cancelled",
+            description: "You have successfully cancelled your registration.",
+          })
+          
+          // Reload event data AND user registrations (loadData now handles both)
+          console.log("✅ Registration cancelled, reloading data...")
+          await loadData()
         }
       } else {
+        // Register for event
+        console.log(`🔄 Attempting to register for event ${eventId}...`)
         const { registration, error } = await registerForEvent(eventId, user.id)
         if (error) {
-          console.error("Failed to register:", error)
+          console.error("❌ Failed to register:", error)
+          toast({
+            title: "Registration Failed",
+            description: error,
+            variant: "destructive",
+          })
         } else if (registration) {
-          setRegisteredEvents((prev) => [...prev, eventId])
-          // Update local event data
-          setEvents((prev) =>
-            prev.map((event) =>
-              event.id === eventId ? { ...event, current_participants: event.current_participants + 1 } : event,
-            ),
-          )
+          // Show success message
+          toast({
+            title: "Registration Successful",
+            description: "You have successfully registered for this event!",
+          })
+          
+          // Reload event data AND user registrations (loadData now handles both)
+          console.log("✅ Registration successful, reloading data...")
+          await loadData()
         }
       }
     } catch (error) {
-      console.error("Registration error:", error)
+      console.error("❌ Registration error:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setRegistrationLoading((prev) => prev.filter((id) => id !== eventId))
     }
@@ -135,6 +170,25 @@ export default function EventsPage() {
     const matchesStatus = isAdmin || event.status === "upcoming" || event.status === "completed"
     
     return matchesSearch && matchesCategory && matchesStatus
+  }).sort((a, b) => {
+    // Sort order: upcoming first, then completed, then others
+    const statusOrder = { upcoming: 1, completed: 2, ongoing: 3, cancelled: 4, postponed: 5, draft: 6 }
+    const aOrder = statusOrder[a.status] || 99
+    const bOrder = statusOrder[b.status] || 99
+    
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder
+    }
+    
+    // Within same status, sort by date (upcoming events: soonest first, completed: most recent first)
+    const aDate = new Date(a.event_date).getTime()
+    const bDate = new Date(b.event_date).getTime()
+    
+    if (a.status === "upcoming") {
+      return aDate - bDate // Soonest first
+    } else {
+      return bDate - aDate // Most recent first
+    }
   })
 
   const upcomingEvents = events.filter((event) => new Date(event.event_date) > new Date()).slice(0, 3)
@@ -317,22 +371,21 @@ export default function EventsPage() {
                         </div>
 
                         {/* Organizer Info */}
-                        {event.organizer && (
+                        {(event.organizer_name || event.organizer) && (
                           <div className="flex items-center space-x-3 mb-4">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={event.organizer.avatar_url || undefined} />
+                              <AvatarImage src={event.organizer?.avatar_url || undefined} />
                               <AvatarFallback>
-                                {event.organizer.full_name
-                                  ? event.organizer.full_name
-                                      .split(" ")
-                                      .map((n) => n[0])
-                                      .join("")
+                                {event.organizer_name 
+                                  ? event.organizer_name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+                                  : event.organizer?.full_name
+                                  ? event.organizer.full_name.split(" ").map((n) => n[0]).join("")
                                   : "O"}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <p className="text-sm font-medium text-foreground">
-                                {event.organizer.full_name || "Unknown Organizer"}
+                                {event.organizer_name || event.organizer?.full_name || "Unknown Organizer"}
                               </p>
                               <p className="text-xs text-muted-foreground">Organizer</p>
                             </div>
