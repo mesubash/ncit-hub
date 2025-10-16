@@ -256,21 +256,31 @@ export default function EventsPage() {
                   const eventDate = new Date(event.event_date)
                   const isPastEvent = eventDate < new Date()
                   const isEventFull = !!(event.max_participants && event.current_participants >= event.max_participants)
+                  const isUpcoming = event.status === "upcoming"
+                  const isHot = isUpcoming && !isPastEvent
 
                   return (
                     <Card
                       key={event.id}
-                      className="hover:shadow-lg transition-all duration-300 h-full flex flex-col group"
+                      className={`hover:shadow-lg transition-all duration-300 h-full flex flex-col group ${
+                        isHot ? "border-2 border-orange-500 shadow-orange-100 dark:shadow-orange-900/20" : ""
+                      }`}
                     >
                       <CardHeader className="flex-grow">
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {event.category && (
                               <Badge variant="secondary" style={{ backgroundColor: event.category.color + "20" }}>
                                 {event.category.name}
                               </Badge>
                             )}
-                            <Badge variant={event.status === "upcoming" ? "default" : "secondary"}>
+                            {isHot && (
+                              <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse">
+                                <Flame className="h-3 w-3 mr-1" />
+                                Hot Event
+                              </Badge>
+                            )}
+                            <Badge variant={event.status === "upcoming" ? "default" : event.status === "completed" ? "secondary" : "outline"}>
                               {event.status}
                             </Badge>
                             {isEventFull && <Badge variant="destructive">Full</Badge>}
@@ -330,13 +340,17 @@ export default function EventsPage() {
                         )}
 
                         {/* Registration Button */}
-                        {user && !isPastEvent && (
+                        {user && !isPastEvent && event.status !== "cancelled" && event.status !== "completed" && (
                           <Button
                             onClick={() => handleRegistration(event.id)}
                             disabled={isLoadingRegistration || (!isRegistered && isEventFull)}
                             variant={isRegistered ? "outline" : "default"}
                             size="sm"
-                            className="w-full"
+                            className={`w-full ${
+                              isHot && !isRegistered 
+                                ? "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white" 
+                                : ""
+                            }`}
                           >
                             {isLoadingRegistration ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -351,11 +365,11 @@ export default function EventsPage() {
                                 ? "Cancel Registration"
                                 : isEventFull
                                   ? "Event Full"
-                                  : "Register"}
+                                  : "I Will Participate"}
                           </Button>
                         )}
 
-                        {!user && !isPastEvent && (
+                        {!user && !isPastEvent && event.status !== "cancelled" && event.status !== "completed" && (
                           <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
                             <Link href="/login">Login to Register</Link>
                           </Button>

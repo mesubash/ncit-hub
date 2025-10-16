@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Navigation } from "@/components/navigation"
 import Link from "next/link"
-import { ArrowLeft, Mail, Phone, MapPin, Clock } from "lucide-react"
+import { ArrowLeft, Mail, Phone, MapPin, Clock, Github, Linkedin, Twitter, Globe, Code2 } from "lucide-react"
 
 export default function ContactPage() {
   return (
@@ -71,6 +72,32 @@ export default function ContactPage() {
 
           {/* Contact Information */}
           <div className="space-y-6">
+            {/* More Information Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>More Information</CardTitle>
+                <CardDescription>Learn more about NCIT Hub and our community</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  NCIT Hub is built and managed by the Nepal Tech Community, dedicated to fostering innovation 
+                  and collaboration in Nepal's technology ecosystem.
+                </p>
+                <div className="space-y-2">
+                  <Button variant="outline" size="sm" asChild className="w-full">
+                    <Link href="/about">
+                      Learn More About Us
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild className="w-full">
+                    <Link href="/about#developer">
+                      Meet the Developer
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Get in Touch</CardTitle>

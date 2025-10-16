@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Navigation } from "@/components/navigation"
 import Link from "next/link"
-import { ArrowLeft, Users, BookOpen, Calendar, Award, Code, Globe, Github, Linkedin, Mail } from "lucide-react"
+import Image from "next/image"
+import { ArrowLeft, Users, BookOpen, Calendar, Award, Code, Globe, Github, Linkedin, Mail, Twitter } from "lucide-react"
 
 export default function AboutPage() {
   return (
@@ -127,11 +129,11 @@ export default function AboutPage() {
 
         <section id="developer" className="mb-16">
           <h2 className="text-3xl font-bold text-foreground mb-8">Developer Information</h2>
-          <Card>
-            <CardHeader>
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gradient-to-br from-primary/10 to-primary/5">
               <div className="flex items-center space-x-4">
-                <div className="p-3 bg-primary/10 rounded-full">
-                  <Code className="h-8 w-8 text-primary" />
+                <div className="p-3 bg-primary rounded-full">
+                  <Code className="h-8 w-8 text-primary-foreground" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl">Built with ❤️ for NCIT</CardTitle>
@@ -139,26 +141,89 @@ export default function AboutPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               {/* Developer Profile Section */}
-              <div className="bg-muted/30 rounded-lg p-6 mb-6">
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="p-2 bg-primary/20 rounded-full">
-                    <Code className="h-6 w-6 text-primary" />
+              <div className="border-2 border-primary/20 rounded-lg p-6 bg-gradient-to-br from-primary/5 to-transparent">
+                <div className="flex flex-col md:flex-row md:items-start md:space-x-6">
+                  {/* Avatar/Photo Placeholder */}
+                  <div className="mb-4 md:mb-0">
+                    <div className="h-32 w-32 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold text-4xl shadow-lg">
+                      SSD
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-foreground text-lg">Lead Developer</h4>
-                    <p className="text-muted-foreground">Member of Nepal Tech Community</p>
+                  
+                  {/* Developer Info */}
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-2xl font-bold text-foreground">Subash Singh Dhami</h3>
+                        <Badge className="bg-gradient-to-r from-blue-600 to-purple-600">Lead Developer</Badge>
+                      </div>
+                      <p className="text-primary font-medium">Full Stack Developer & Platform Architect</p>
+                      <p className="text-sm text-muted-foreground mt-1">BE Software Engineering</p>
+                    </div>
+                    
+                    <p className="text-muted-foreground leading-relaxed">
+                      Passionate about building innovative solutions for educational institutions and fostering tech
+                      communities in Nepal. Committed to creating platforms that enhance student engagement and academic
+                      collaboration. Available for technical discussions, collaborations, and freelance projects.
+                    </p>
+
+                    {/* Contact & Social Links */}
+                    <div className="space-y-3 pt-3 border-t">
+                      <div className="flex items-center gap-3 text-sm">
+                        <Mail className="h-4 w-4 text-primary" />
+                        <a 
+                          href="mailto:hello@subashsdhami.com.np" 
+                          className="text-foreground hover:text-primary transition-colors hover:underline"
+                        >
+                          hello@subashsdhami.com.np
+                        </a>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-primary font-medium">Connect:</span>
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href="https://github.com/mesubash"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors text-xs"
+                          >
+                            <Github className="h-3.5 w-3.5" />
+                            <span>GitHub</span>
+                          </a>
+                          <a
+                            href="https://linkedin.com/in/subashsdhami"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md transition-colors text-xs"
+                          >
+                            <Linkedin className="h-3.5 w-3.5" />
+                            <span>LinkedIn</span>
+                          </a>
+                          {/* <a
+                            href="https://twitter.com/subashdhami"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-md transition-colors text-xs"
+                          >
+                            <Twitter className="h-3.5 w-3.5" />
+                            <span>Twitter</span>
+                          </a> */}
+                          <a
+                            href="https://subashsdhami.com.np"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 rounded-md transition-colors text-xs"
+                          >
+                            <Globe className="h-3.5 w-3.5" />
+                            <span>Portfolio</span>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <h5 className="font-medium text-foreground">Subash Singh Dhami</h5>
-                  <p className="text-sm text-muted-foreground">BE Software Engineering</p>
-                  <p className="text-sm text-muted-foreground">
-                    Passionate about building innovative solutions for educational institutions and fostering tech
-                    communities in Nepal. Committed to creating platforms that enhance student engagement and academic
-                    collaboration.
-                  </p>
                 </div>
               </div>
 
@@ -196,19 +261,31 @@ export default function AboutPage() {
 
         <section id="community" className="mb-16">
           <h2 className="text-3xl font-bold text-foreground mb-8">Managed by Nepal Tech Community</h2>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
-                  <Globe className="h-8 w-8 text-green-600" />
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+              <div className="flex flex-col md:flex-row md:items-center md:space-x-6">
+                {/* Community Logo/Image */}
+                <div className="mb-4 md:mb-0 flex-shrink-0">
+                  <div className="relative h-24 w-24 md:h-32 md:w-32 rounded-full overflow-hidden bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center shadow-lg">
+                    <Image
+                      src="/ntk_logo.png"
+                      alt="Nepal Tech Community Logo"
+                      width={128}
+                      height={128}
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-2xl">Nepal Tech Community</CardTitle>
-                  <CardDescription>Fostering innovation and collaboration in Nepal's tech ecosystem</CardDescription>
+                
+                <div className="flex-1">
+                  <CardTitle className="text-2xl text-green-900 dark:text-green-100">Nepal Tech Community</CardTitle>
+                  <CardDescription className="text-green-700 dark:text-green-300">
+                    Fostering innovation and collaboration in Nepal's tech ecosystem
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               <p className="text-muted-foreground">
                 This platform is proudly managed and maintained by the Nepal Tech Community, a vibrant network of
                 developers, designers, entrepreneurs, and tech enthusiasts working together to advance Nepal's
@@ -243,14 +320,14 @@ export default function AboutPage() {
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href="https://github.com/nepal-tech-community" target="_blank" rel="noopener noreferrer">
+                    <Link href="https://github.com/NepalTekComm" target="_blank" rel="noopener noreferrer">
                       <Github className="h-4 w-4 mr-2" />
                       GitHub
                     </Link>
                   </Button>
                   <Button variant="outline" size="sm" asChild>
                     <Link
-                      href="https://linkedin.com/company/nepal-tech-community"
+                      href="https://www.linkedin.com/company/ntkcommunity"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -259,9 +336,15 @@ export default function AboutPage() {
                     </Link>
                   </Button>
                   <Button variant="outline" size="sm" asChild>
-                    <Link href="mailto:community@nepaltech.org">
+                    <Link href="mailto:tekcommunity@ncit.edu.np">
                       <Mail className="h-4 w-4 mr-2" />
                       Contact
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="https://tekcommunity.ncit.edu.np/" target="_blank" rel="noopener noreferrer">
+                      <Globe className="h-4 w-4 mr-2" />
+                      Website
                     </Link>
                   </Button>
                 </div>
