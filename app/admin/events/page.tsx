@@ -22,6 +22,8 @@ import Link from "next/link"
 import { ArrowLeft, Plus, Edit, Trash2, Eye, Search, Calendar, Loader2, Users, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { useFeatureToggle } from "@/hooks/use-feature-toggle"
+import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 
 export default function AdminEventsPage() {
   const [events, setEvents] = useState<Event[]>([])
@@ -32,12 +34,22 @@ export default function AdminEventsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [eventToDelete, setEventToDelete] = useState<{ id: string; title: string } | null>(null)
   const { toast } = useToast()
+  const {
+    isEnabled: isEventManagementEnabled,
+    isLoading: isEventToggleLoading,
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
 
   useEffect(() => {
+    if (!isEventManagementEnabled) {
+      setEvents([])
+      setIsLoading(false)
+      return
+    }
     loadEvents()
-  }, [])
+  }, [isEventManagementEnabled])
 
   const loadEvents = async () => {
+    if (!isEventManagementEnabled) return
     try {
       setIsLoading(true)
       const { events: fetchedEvents, error } = await getAllEvents()
@@ -70,7 +82,7 @@ export default function AdminEventsPage() {
   }
 
   const confirmDelete = async () => {
-    if (!eventToDelete) return
+    if (!eventToDelete || !isEventManagementEnabled) return
 
     try {
       setDeletingId(eventToDelete.id)
@@ -102,6 +114,34 @@ export default function AdminEventsPage() {
       setShowDeleteDialog(false)
       setEventToDelete(null)
     }
+  }
+
+  if (!isEventToggleLoading && !isEventManagementEnabled) {
+    return (
+      <AdminGuard>
+        <div className="min-h-screen bg-background">
+          <Navigation />
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <Card className="text-center">
+              <CardHeader className="space-y-4">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <AlertTriangle className="h-8 w-8 text-yellow-600" />
+                </div>
+                <CardTitle className="text-2xl">Event management is disabled</CardTitle>
+                <CardDescription>
+                  Turn the event management toggle back on from the admin dashboard to access this page again.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link href="/admin">Go to Dashboard</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </AdminGuard>
+    )
   }
 
   const filteredEvents = events.filter((event) => {

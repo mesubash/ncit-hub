@@ -317,6 +317,29 @@ export interface Database {
           created_at?: string;
         };
       };
+      feature_toggles: {
+        Row: {
+          feature: string;
+          description: string | null;
+          is_enabled: boolean;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          feature: string;
+          description?: string | null;
+          is_enabled?: boolean;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          feature?: string;
+          description?: string | null;
+          is_enabled?: boolean;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+      };
     };
   };
 }

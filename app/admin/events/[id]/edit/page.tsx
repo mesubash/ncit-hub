@@ -13,6 +13,8 @@ import { getEventById, updateEvent, deleteEvent, type Event } from "@/lib/events
 import { getCategories, type CategoryRow } from "@/lib/blog"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useFeatureToggle } from "@/hooks/use-feature-toggle"
+import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Loader2, Trash2, Calendar, MapPin, Clock, Users, AlertTriangle } from "lucide-react"
@@ -55,10 +57,15 @@ export default function EditEventPage({ params }: EditEventPageProps) {
   const [isMultiDay, setIsMultiDay] = useState(false)
 
   useEffect(() => {
+    if (!isEventManagementEnabled) {
+      setIsLoading(false)
+      return
+    }
     loadData()
-  }, [params.id])
+  }, [params.id, isEventManagementEnabled])
 
   const loadData = async () => {
+    if (!isEventManagementEnabled) return
     try {
       setIsLoading(true)
       
@@ -122,6 +129,14 @@ export default function EditEventPage({ params }: EditEventPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isEventManagementEnabled) {
+      toast({
+        title: "Event management is disabled",
+        description: "Enable the event management toggle before editing events.",
+        variant: "destructive",
+      })
+      return
+    }
     
     if (!user || !event) return
 
@@ -184,7 +199,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
   }
 
   const handleDelete = async () => {
-    if (!event) return
+    if (!event || !isEventManagementEnabled) return
     
     if (!confirm(`Are you sure you want to delete "${event.title}"? This action cannot be undone.`)) {
       return
@@ -217,6 +232,34 @@ export default function EditEventPage({ params }: EditEventPageProps) {
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  if (!isEventToggleLoading && !isEventManagementEnabled) {
+    return (
+      <AdminGuard>
+        <div className="min-h-screen bg-background">
+          <Navigation />
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <Card className="text-center">
+              <CardHeader className="space-y-4">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <AlertTriangle className="h-8 w-8 text-yellow-600" />
+                </div>
+                <CardTitle className="text-2xl">Event editing unavailable</CardTitle>
+                <CardDescription>
+                  The event management system is turned off. Enable it from the admin dashboard to continue editing events.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link href="/admin">Back to Dashboard</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </AdminGuard>
+    )
   }
 
   if (isLoading) {

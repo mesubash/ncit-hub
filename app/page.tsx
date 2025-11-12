@@ -10,34 +10,45 @@ import { useAuth } from "@/contexts/auth-context"
 import { useEffect, useState } from "react"
 import { getAllBlogs, type Blog } from "@/lib/blog"
 import { getAllEvents, type Event } from "@/lib/events"
+import { useFeatureToggle } from "@/hooks/use-feature-toggle"
+import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
   const [blogs, setBlogs] = useState<Blog[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
+  const {
+    isEnabled: isEventManagementEnabled,
+    isLoading: isEventToggleLoading,
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
+  const showEventLinks = isEventToggleLoading || isEventManagementEnabled
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [isEventManagementEnabled])
 
   const loadData = async () => {
     try {
       const [blogsResult, eventsResult] = await Promise.all([
         getAllBlogs("published"),
-        getAllEvents()
+        isEventManagementEnabled
+          ? getAllEvents()
+          : Promise.resolve<{ events: Event[]; error: string | null }>({ events: [], error: null })
       ])
 
       if (!blogsResult.error && blogsResult.blogs) {
         setBlogs(blogsResult.blogs.slice(0, 3)) // Get latest 3 blogs
       }
 
-      if (!eventsResult.error && eventsResult.events) {
+      if (isEventManagementEnabled && !eventsResult.error && eventsResult.events) {
         // Filter upcoming events
         const upcoming = eventsResult.events
           .filter(event => new Date(event.event_date) > new Date())
           .slice(0, 3)
         setEvents(upcoming)
+      } else {
+        setEvents([])
       }
     } catch (error) {
       console.error("Failed to load data:", error)
@@ -93,9 +104,11 @@ export default function HomePage() {
                     </Button>
                   </>
                 )}
-                <Button variant="secondary" size="lg" asChild>
-                  <Link href="/events">View Events</Link>
-                </Button>
+                {showEventLinks && (
+                  <Button variant="secondary" size="lg" asChild>
+                    <Link href="/events">View Events</Link>
+                  </Button>
+                )}
               </div>
             </>
           ) : (
@@ -116,9 +129,11 @@ export default function HomePage() {
                 <Button variant="outline" size="lg" asChild>
                   <Link href="/blogs">Explore Blogs</Link>
                 </Button>
-                <Button variant="secondary" size="lg" asChild>
-                  <Link href="/events">View Events</Link>
-                </Button>
+                {showEventLinks && (
+                  <Button variant="secondary" size="lg" asChild>
+                    <Link href="/events">View Events</Link>
+                  </Button>
+                )}
               </div>
             </>
           )}
@@ -286,55 +301,57 @@ export default function HomePage() {
       </section>
 
       {/* Upcoming Events Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-foreground">Upcoming Events</h2>
-            <Button variant="ghost" asChild>
-              <Link href="/events">
-                View All <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          
-          {isLoadingData ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
+      {showEventLinks && (
+        <section className="py-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold text-foreground">Upcoming Events</h2>
+              <Button variant="ghost" asChild>
+                <Link href="/events">
+                  View All <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
             </div>
-          ) : events.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No upcoming events available
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((event) => (
-                <Card key={event.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant="outline">{event.category?.name || "Event"}</Badge>
-                      <div className="text-sm text-muted-foreground text-right">
-                        <div className="flex items-center justify-end">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {new Date(event.event_date).toLocaleDateString()}
+            
+            {isLoadingData ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : events.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No upcoming events available
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {events.map((event) => (
+                  <Card key={event.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start mb-2">
+                        <Badge variant="outline">{event.category?.name || "Event"}</Badge>
+                        <div className="text-sm text-muted-foreground text-right">
+                          <div className="flex items-center justify-end">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {new Date(event.event_date).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <CardTitle className="text-xl hover:text-primary transition-colors">
-                      <Link href={`/events/${event.id}`}>{event.title}</Link>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="mb-4 line-clamp-3">
-                      {event.description}
-                    </CardDescription>
-                    <div className="text-sm text-muted-foreground">📍 {event.location}</div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+                      <CardTitle className="text-xl hover:text-primary transition-colors">
+                        <Link href={`/events/${event.id}`}>{event.title}</Link>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="mb-4 line-clamp-3">
+                        {event.description}
+                      </CardDescription>
+                      <div className="text-sm text-muted-foreground">📍 {event.location}</div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="bg-card border-t py-12 px-4 sm:px-6 lg:px-8">
@@ -354,11 +371,13 @@ export default function HomePage() {
                     Blogs
                   </Link>
                 </li>
-                <li>
-                  <Link href="/events" className="text-muted-foreground hover:text-primary">
-                    Events
-                  </Link>
-                </li>
+                {showEventLinks && (
+                  <li>
+                    <Link href="/events" className="text-muted-foreground hover:text-primary">
+                      Events
+                    </Link>
+                  </li>
+                )}
                 <li>
                   <Link href="/about" className="text-muted-foreground hover:text-primary">
                     About

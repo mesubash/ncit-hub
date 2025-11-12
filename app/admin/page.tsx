@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -23,12 +24,24 @@ import { AdminGuard } from "@/components/admin-guard"
 import { useEffect, useState } from "react"
 import { getAllBlogs, getPendingBlogs, type Blog } from "@/lib/blog"
 import { getAllEvents, type Event } from "@/lib/events"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import { useFeatureToggle } from "@/hooks/use-feature-toggle"
+import { FEATURE_TOGGLE_KEYS, setFeatureToggle } from "@/lib/feature-toggles"
 
 export default function AdminPage() {
   const [blogs, setBlogs] = useState<Blog[]>([])
   const [pendingBlogs, setPendingBlogs] = useState<Blog[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isUpdatingToggle, setIsUpdatingToggle] = useState(false)
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const {
+    isEnabled: isEventManagementEnabled,
+    isLoading: isEventToggleLoading,
+    setLocalValue: setLocalEventToggle,
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
   
   // Statistics
   const [stats, setStats] = useState({
@@ -39,18 +52,17 @@ export default function AdminPage() {
   })
 
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    loadDashboardData(isEventManagementEnabled)
+  }, [isEventManagementEnabled])
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (includeEvents = true) => {
     try {
       setIsLoading(true)
       
-      // Fetch all data in parallel
-      const [blogsResult, pendingResult, eventsResult] = await Promise.all([
+      // Fetch blog-related data in parallel
+      const [blogsResult, pendingResult] = await Promise.all([
         getAllBlogs(),
         getPendingBlogs(),
-        getAllEvents(),
       ])
 
       if (!blogsResult.error && blogsResult.blogs) {
@@ -72,14 +84,29 @@ export default function AdminPage() {
         }))
       }
 
-      if (!eventsResult.error && eventsResult.events) {
-        const upcoming = eventsResult.events
-          .filter(e => new Date(e.event_date) > new Date())
-          .slice(0, 5)
-        setEvents(upcoming)
+      if (includeEvents) {
+        const eventsResult = await getAllEvents()
+        if (!eventsResult.error && eventsResult.events) {
+          const upcoming = eventsResult.events
+            .filter(e => new Date(e.event_date) > new Date())
+            .slice(0, 5)
+          setEvents(upcoming)
+          setStats(prev => ({
+            ...prev,
+            totalEvents: eventsResult.events.length,
+          }))
+        } else {
+          setEvents([])
+          setStats(prev => ({
+            ...prev,
+            totalEvents: 0,
+          }))
+        }
+      } else {
+        setEvents([])
         setStats(prev => ({
           ...prev,
-          totalEvents: eventsResult.events.length,
+          totalEvents: 0,
         }))
       }
     } catch (error) {
@@ -87,6 +114,37 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleEventToggle = async (nextValue: boolean) => {
+    if (isEventToggleLoading || isUpdatingToggle) return
+
+    setIsUpdatingToggle(true)
+    setLocalEventToggle(nextValue)
+
+    const { error } = await setFeatureToggle(
+      FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT,
+      nextValue,
+      user?.id,
+    )
+
+    if (error) {
+      setLocalEventToggle(!nextValue)
+      toast({
+        title: "Failed to update event management",
+        description: error,
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: nextValue ? "Event management enabled" : "Event management disabled",
+        description: nextValue
+          ? "Events are visible to admins and students again."
+          : "Events have been hidden from the platform.",
+      })
+    }
+
+    setIsUpdatingToggle(false)
   }
 
   const getStatusIcon = (status: string) => {
@@ -137,9 +195,9 @@ export default function AdminPage() {
 
           {/* Stats Grid */}
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {[1, 2, 3, 4].map((i) => (
-                <Card key={i}>
+            <div className={`grid md:grid-cols-2 ${isEventManagementEnabled ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-6 mb-8`}>
+              {Array.from({ length: isEventManagementEnabled ? 4 : 3 }).map((_, index) => (
+                <Card key={index}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-center h-20">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -149,7 +207,7 @@ export default function AdminPage() {
               ))}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className={`grid md:grid-cols-2 ${isEventManagementEnabled ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-6 mb-8`}>
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -172,17 +230,19 @@ export default function AdminPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Events</p>
-                      <p className="text-3xl font-bold text-foreground">{stats.totalEvents}</p>
+              {isEventManagementEnabled && (
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Events</p>
+                        <p className="text-3xl font-bold text-foreground">{stats.totalEvents}</p>
+                      </div>
+                      <Calendar className="h-8 w-8 text-primary" />
                     </div>
-                    <Calendar className="h-8 w-8 text-primary" />
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -211,12 +271,14 @@ export default function AdminPage() {
                     Create New Blog Post
                   </Link>
                 </Button>
-                <Button className="w-full justify-start bg-transparent" variant="outline" asChild>
-                  <Link href="/admin/events/new">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New Event
-                  </Link>
-                </Button>
+                {isEventManagementEnabled && (
+                  <Button className="w-full justify-start bg-transparent" variant="outline" asChild>
+                    <Link href="/admin/events/new">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Event
+                    </Link>
+                  </Button>
+                )}
                 <Button className="w-full justify-start bg-transparent" variant="outline" asChild>
                   <Link href="/admin/review">
                     <Clock className="h-4 w-4 mr-2" />
@@ -238,6 +300,22 @@ export default function AdminPage() {
                 <CardDescription>Current system information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Event Management</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isEventManagementEnabled ? "Visible to students & admins" : "Hidden across the platform"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isUpdatingToggle && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    <Switch
+                      checked={isEventManagementEnabled}
+                      onCheckedChange={handleEventToggle}
+                      disabled={isEventToggleLoading || isUpdatingToggle}
+                    />
+                  </div>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Website Status</span>
                   <Badge
@@ -264,7 +342,7 @@ export default function AdminPage() {
           </div>
 
           {/* Recent Content */}
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className={`grid gap-6 ${isEventManagementEnabled ? "lg:grid-cols-2" : ""}`}>
             {/* Recent Blogs */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -323,52 +401,54 @@ export default function AdminPage() {
             </Card>
 
             {/* Recent Events */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Recent Events</CardTitle>
-                  <CardDescription>Upcoming and recent events</CardDescription>
-                </div>
-                <Button size="sm" asChild>
-                  <Link href="/admin/events">View All</Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-40">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            {isEventManagementEnabled && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Recent Events</CardTitle>
+                    <CardDescription>Upcoming and recent events</CardDescription>
                   </div>
-                ) : events.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No upcoming events found
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {events.map((event) => (
-                      <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-foreground line-clamp-1">{event.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(event.event_date).toLocaleDateString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{event.location}</p>
+                  <Button size="sm" asChild>
+                    <Link href="/admin/events">View All</Link>
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-40">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : events.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No upcoming events found
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {events.map((event) => (
+                        <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground line-clamp-1">{event.title}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(event.event_date).toLocaleDateString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{event.location}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                              Upcoming
+                            </Badge>
+                            <Button size="sm" variant="ghost" asChild>
+                              <Link href={`/events/${event.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                            Upcoming
-                          </Badge>
-                          <Button size="sm" variant="ghost" asChild>
-                            <Link href={`/events/${event.id}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

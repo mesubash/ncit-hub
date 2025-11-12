@@ -162,6 +162,24 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Feature toggles table to manage optional modules
+CREATE TABLE IF NOT EXISTS public.feature_toggles (
+    feature TEXT PRIMARY KEY,
+    description TEXT,
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Seed default event management toggle (enabled by default)
+INSERT INTO public.feature_toggles (feature, description, is_enabled)
+VALUES (
+    'event_management',
+    'Controls the visibility of the event management experience across NCIT Hub.',
+    TRUE
+)
+ON CONFLICT (feature) DO NOTHING;
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_blogs_slug ON public.blogs(slug);
 CREATE INDEX IF NOT EXISTS idx_blogs_author_id ON public.blogs(author_id);
@@ -196,6 +214,7 @@ ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blog_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feature_toggles ENABLE ROW LEVEL SECURITY;
 
 -- Create update timestamp trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -219,6 +238,11 @@ CREATE TRIGGER set_timestamp_blogs
 
 CREATE TRIGGER set_timestamp_events
     BEFORE UPDATE ON public.events
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER set_timestamp_feature_toggles
+    BEFORE UPDATE ON public.feature_toggles
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -414,6 +438,43 @@ CREATE POLICY "Authenticated users can create notifications"
 ON public.notifications FOR INSERT
 TO authenticated
 WITH CHECK (true);
+
+-- Feature toggles policies
+CREATE POLICY "Feature toggles are readable by everyone"
+ON public.feature_toggles FOR SELECT
+USING (true);
+
+CREATE POLICY "Only admins can insert feature toggles"
+ON public.feature_toggles FOR INSERT
+TO authenticated
+WITH CHECK (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'admin'
+));
+
+CREATE POLICY "Only admins can update feature toggles"
+ON public.feature_toggles FOR UPDATE
+TO authenticated
+USING (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'admin'
+))
+WITH CHECK (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'admin'
+));
+
+CREATE POLICY "Only admins can delete feature toggles"
+ON public.feature_toggles FOR DELETE
+TO authenticated
+USING (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'admin'
+));
 
 -- Helper functions
 CREATE OR REPLACE FUNCTION increment_blog_views(blog_id UUID)

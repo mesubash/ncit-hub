@@ -13,6 +13,8 @@ import { Navigation } from "@/components/navigation"
 import { AdminGuard } from "@/components/admin-guard"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useFeatureToggle } from "@/hooks/use-feature-toggle"
+import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 import { useRouter } from "next/navigation"
 import { createEvent } from "@/lib/events"
 import { getCategories, type CategoryRow } from "@/lib/blog"
@@ -42,12 +44,22 @@ export default function NewEventPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const {
+    isEnabled: isEventManagementEnabled,
+    isLoading: isEventToggleLoading,
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
 
   useEffect(() => {
+    if (!isEventManagementEnabled) {
+      setCategories([])
+      setCategoriesLoading(false)
+      return
+    }
     loadCategories()
-  }, [])
+  }, [isEventManagementEnabled])
 
   const loadCategories = async () => {
+    setCategoriesLoading(true)
     try {
       const { categories: cats, error } = await getCategories()
       if (!error && cats) {
@@ -79,7 +91,15 @@ export default function NewEventPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+    if (!isEventManagementEnabled) {
+      toast({
+        title: "Event management is disabled",
+        description: "Enable the event management toggle from the admin dashboard to create new events.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!user) {
       toast({
         title: "Error",
@@ -152,6 +172,34 @@ export default function NewEventPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (!isEventToggleLoading && !isEventManagementEnabled) {
+    return (
+      <AdminGuard>
+        <div className="min-h-screen bg-background">
+          <Navigation />
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <Card className="text-center">
+              <CardHeader className="space-y-4">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <Calendar className="h-8 w-8 text-yellow-600" />
+                </div>
+                <CardTitle className="text-2xl">Event creation is paused</CardTitle>
+                <CardDescription>
+                  Turn the event management toggle back on from the admin dashboard to create new events.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link href="/admin">Back to Dashboard</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </AdminGuard>
+    )
   }
 
   return (

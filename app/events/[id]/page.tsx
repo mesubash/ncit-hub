@@ -40,6 +40,8 @@ import {
   AlertTriangle
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useFeatureToggle } from "@/hooks/use-feature-toggle"
+import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 
 export default function EventDetailPage() {
   const params = useParams()
@@ -47,6 +49,10 @@ export default function EventDetailPage() {
   const eventId = params.id as string
   const { user } = useAuth()
   const { toast } = useToast()
+  const {
+    isEnabled: isEventManagementEnabled,
+    isLoading: isEventToggleLoading,
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
 
   const [event, setEvent] = useState<Event | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -58,8 +64,13 @@ export default function EventDetailPage() {
   const [loadingParticipants, setLoadingParticipants] = useState(false)
 
   useEffect(() => {
+    if (!isEventManagementEnabled) {
+      setIsLoading(false)
+      setEvent(null)
+      return
+    }
     loadEvent()
-  }, [eventId])
+  }, [eventId, isEventManagementEnabled])
 
   useEffect(() => {
     if (event && user) {
@@ -68,6 +79,7 @@ export default function EventDetailPage() {
   }, [event, user])
 
   const loadEvent = async () => {
+    if (!isEventManagementEnabled) return
     try {
       setIsLoading(true)
       const { event: fetchedEvent, error } = await getEventById(eventId)
@@ -101,6 +113,7 @@ export default function EventDetailPage() {
   }
 
   const loadParticipants = async (eventId: string) => {
+    if (!isEventManagementEnabled) return
     try {
       setLoadingParticipants(true)
       const { participants: fetchedParticipants, error } = await getEventParticipants(eventId)
@@ -118,14 +131,14 @@ export default function EventDetailPage() {
   }
 
   const checkRegistration = async () => {
-    if (!event || !user) return
+    if (!event || !user || !isEventManagementEnabled) return
 
     const { registered } = await isUserRegisteredForEvent(event.id, user.id)
     setIsRegistered(registered)
   }
 
   const handleRegistration = async () => {
-    if (!user || !event) return
+    if (!user || !event || !isEventManagementEnabled) return
 
     setIsRegistering(true)
 
@@ -197,7 +210,7 @@ export default function EventDetailPage() {
   }
 
   const handleDelete = async () => {
-    if (!event) return
+    if (!event || !isEventManagementEnabled) return
 
     setIsDeleting(true)
 
@@ -228,6 +241,32 @@ export default function EventDetailPage() {
       setIsDeleting(false)
       setShowDeleteDialog(false)
     }
+  }
+
+  if (!isEventToggleLoading && !isEventManagementEnabled) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <Card className="text-center">
+            <CardHeader className="space-y-4">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <AlertTriangle className="h-8 w-8 text-yellow-600" />
+              </div>
+              <CardTitle className="text-2xl">Event details unavailable</CardTitle>
+              <CardDescription>
+                The event management system is currently disabled. Existing events are hidden until an admin turns it back on.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link href="/">Return to Home</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {

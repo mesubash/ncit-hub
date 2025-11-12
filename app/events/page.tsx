@@ -20,6 +20,8 @@ import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { Search, Calendar, Clock, MapPin, ArrowLeft, Users, Loader2, UserPlus, UserMinus, Flame, AlertTriangle } from "lucide-react"
+import { useFeatureToggle } from "@/hooks/use-feature-toggle"
+import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
@@ -33,16 +35,25 @@ export default function EventsPage() {
   const [registrationLoading, setRegistrationLoading] = useState<string[]>([])
   const { user } = useAuth()
   const { toast } = useToast()
+  const {
+    isEnabled: isEventManagementEnabled,
+    isLoading: isEventToggleLoading,
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
 
   useEffect(() => {
+    if (!isEventManagementEnabled) {
+      setEvents([])
+      setIsLoading(false)
+      return
+    }
     loadData()
-  }, [])
+  }, [isEventManagementEnabled])
 
   useEffect(() => {
-    if (user) {
+    if (user && isEventManagementEnabled) {
       loadUserRegistrations()
     }
-  }, [user, events])
+  }, [user, events, isEventManagementEnabled])
 
   const loadData = async () => {
     try {
@@ -71,7 +82,7 @@ export default function EventsPage() {
   }
 
   const loadUserRegistrations = async (eventsList?: Event[]) => {
-    if (!user) return
+    if (!user || !isEventManagementEnabled) return
 
     // Use provided events list or fallback to state
     const eventsToCheck = eventsList || events
@@ -92,7 +103,7 @@ export default function EventsPage() {
   }
 
   const handleRegistration = async (eventId: string) => {
-    if (!user) return
+    if (!user || !isEventManagementEnabled) return
 
     setRegistrationLoading((prev) => [...prev, eventId])
 
@@ -155,6 +166,32 @@ export default function EventsPage() {
     } finally {
       setRegistrationLoading((prev) => prev.filter((id) => id !== eventId))
     }
+  }
+
+  if (!isEventToggleLoading && !isEventManagementEnabled) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <Card className="text-center">
+            <CardHeader className="space-y-4">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <AlertTriangle className="h-8 w-8 text-yellow-600" />
+              </div>
+              <CardTitle className="text-2xl">Events are temporarily unavailable</CardTitle>
+              <CardDescription>
+                The event management system has been turned off by the administrators. Please check back later for new updates.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link href="/">Return to Home</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   const filteredEvents = events.filter((event) => {

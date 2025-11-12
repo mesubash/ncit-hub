@@ -29,6 +29,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
+import { useFeatureToggle } from "@/hooks/use-feature-toggle"
+import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 
 // Public navigation items (visible to everyone)
 const publicNavItems = [
@@ -54,6 +56,11 @@ export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const { user, isAuthenticated, signOut } = useAuth()
+  const {
+    isEnabled: isEventManagementEnabled,
+    isLoading: isEventToggleLoading,
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
+  const showEventLinks = isEventToggleLoading || isEventManagementEnabled
 
   const handleLogout = () => {
     setShowLogoutDialog(false)
@@ -63,7 +70,9 @@ export function Navigation() {
 
   // Combine navigation items based on role
   const getNavItems = () => {
-    let items = [...publicNavItems]
+    let items = publicNavItems.filter(
+      (item) => item.href !== "/events" || showEventLinks,
+    )
     
     // Hide About and Contact when user is logged in
     if (isAuthenticated && user) {
@@ -224,12 +233,14 @@ export function Navigation() {
                           Manage Blogs
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin/events" className="flex items-center cursor-pointer">
-                          <Calendar className="mr-2 h-4 w-4" />
-                          Manage Events
-                        </Link>
-                      </DropdownMenuItem>
+                      {showEventLinks && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/events" className="flex items-center cursor-pointer">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            Manage Events
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem asChild>
                         <Link href="/admin/review" className="flex items-center cursor-pointer">
                           <Shield className="mr-2 h-4 w-4" />
@@ -379,13 +390,15 @@ export function Navigation() {
                       >
                         Manage Blogs
                       </Link>
-                      <Link
-                        href="/admin/events"
-                        className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Manage Events
-                      </Link>
+                      {showEventLinks && (
+                        <Link
+                          href="/admin/events"
+                          className="px-2 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          Manage Events
+                        </Link>
+                      )}
                     </>
                   )}
 
