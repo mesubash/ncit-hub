@@ -56,11 +56,11 @@ export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const { user, isAuthenticated, signOut } = useAuth()
-  const {
-    isEnabled: isEventManagementEnabled,
-    isLoading: isEventToggleLoading,
-  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
-  const showEventLinks = isEventToggleLoading || isEventManagementEnabled
+  const { isEnabled: isEventManagementEnabled } = useFeatureToggle(
+    FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT,
+    { subscribe: true, defaultEnabled: false },
+  )
+  const showEventLinks = isEventManagementEnabled
 
   const handleLogout = () => {
     setShowLogoutDialog(false)

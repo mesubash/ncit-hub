@@ -18,11 +18,11 @@ export default function HomePage() {
   const [blogs, setBlogs] = useState<Blog[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
-  const {
-    isEnabled: isEventManagementEnabled,
-    isLoading: isEventToggleLoading,
-  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
-  const showEventLinks = isEventToggleLoading || isEventManagementEnabled
+  const { isEnabled: isEventManagementEnabled } = useFeatureToggle(
+    FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT,
+    { subscribe: true, defaultEnabled: false },
+  )
+  const showEventLinks = isEventManagementEnabled
 
   useEffect(() => {
     loadData()

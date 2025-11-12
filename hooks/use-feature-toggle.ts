@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
@@ -104,13 +104,13 @@ export function useFeatureToggle(
     }
   }, [feature, subscribe, defaultEnabled])
 
-  const setLocalValue = (value: boolean | ((prev: boolean) => boolean)) => {
+  const setLocalValue = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
     setIsEnabled((prev) => {
       const nextValue = typeof value === "function" ? value(prev) : value
       persistValue(nextValue)
       return nextValue
     })
-  }
+  }, [])
 
   const state = useMemo(
     () => ({
@@ -119,7 +119,7 @@ export function useFeatureToggle(
       error,
       setLocalValue,
     }),
-    [isEnabled, isLoading, error],
+    [isEnabled, isLoading, error, setLocalValue],
   )
 
   return state

@@ -47,7 +47,7 @@ export default function NewEventPage() {
   const {
     isEnabled: isEventManagementEnabled,
     isLoading: isEventToggleLoading,
-  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true, defaultEnabled: false })
 
   useEffect(() => {
     if (!isEventManagementEnabled) {

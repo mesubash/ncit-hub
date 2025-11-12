@@ -52,7 +52,7 @@ export default function EventDetailPage() {
   const {
     isEnabled: isEventManagementEnabled,
     isLoading: isEventToggleLoading,
-  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true, defaultEnabled: false })
 
   const [event, setEvent] = useState<Event | null>(null)
   const [isLoading, setIsLoading] = useState(true)

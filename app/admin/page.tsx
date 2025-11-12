@@ -4,6 +4,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -41,7 +51,9 @@ export default function AdminPage() {
     isEnabled: isEventManagementEnabled,
     isLoading: isEventToggleLoading,
     setLocalValue: setLocalEventToggle,
-  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true })
+  } = useFeatureToggle(FEATURE_TOGGLE_KEYS.EVENT_MANAGEMENT, { subscribe: true, defaultEnabled: false })
+  const [toggleDialogOpen, setToggleDialogOpen] = useState(false)
+  const [pendingToggleValue, setPendingToggleValue] = useState<boolean | null>(null)
   
   // Statistics
   const [stats, setStats] = useState({
@@ -116,10 +128,11 @@ export default function AdminPage() {
     }
   }
 
-  const handleEventToggle = async (nextValue: boolean) => {
+  const applyEventToggle = async (nextValue: boolean) => {
     if (isEventToggleLoading || isUpdatingToggle) return
 
     setIsUpdatingToggle(true)
+    const previousValue = isEventManagementEnabled
     setLocalEventToggle(nextValue)
 
     const { error } = await setFeatureToggle(
@@ -129,7 +142,7 @@ export default function AdminPage() {
     )
 
     if (error) {
-      setLocalEventToggle(!nextValue)
+      setLocalEventToggle(previousValue)
       toast({
         title: "Failed to update event management",
         description: error,
@@ -145,6 +158,27 @@ export default function AdminPage() {
     }
 
     setIsUpdatingToggle(false)
+  }
+
+  const openToggleDialog = (nextValue: boolean) => {
+    setPendingToggleValue(nextValue)
+    setToggleDialogOpen(true)
+  }
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setToggleDialogOpen(false)
+      setPendingToggleValue(null)
+    } else {
+      setToggleDialogOpen(true)
+    }
+  }
+
+  const confirmToggleDialog = async () => {
+    if (pendingToggleValue === null) return
+    await applyEventToggle(pendingToggleValue)
+    setPendingToggleValue(null)
+    setToggleDialogOpen(false)
   }
 
   const getStatusIcon = (status: string) => {
@@ -311,7 +345,7 @@ export default function AdminPage() {
                     {isUpdatingToggle && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                     <Switch
                       checked={isEventManagementEnabled}
-                      onCheckedChange={handleEventToggle}
+                      onCheckedChange={openToggleDialog}
                       disabled={isEventToggleLoading || isUpdatingToggle}
                     />
                   </div>
@@ -452,6 +486,31 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={toggleDialogOpen} onOpenChange={handleDialogOpenChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingToggleValue ? "Enable event management?" : "Disable event management?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingToggleValue
+                ? "Enabling will immediately restore event listings, admin tools, and registrations across the site."
+                : "Disabling hides every event entry point and blocks new registrations until you turn it back on."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleDialogOpenChange(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmToggleDialog}
+              disabled={isUpdatingToggle}
+              className={pendingToggleValue ? "" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
+            >
+              {pendingToggleValue ? "Enable" : "Disable"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminGuard>
   )
 }
