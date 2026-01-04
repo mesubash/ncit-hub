@@ -8,7 +8,7 @@ import Image from "next/image"
 import { ArrowLeft, Calendar, Clock } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { getBlogByIdServer } from "@/lib/blog-server"
-import { getAllBlogs } from "@/lib/blog"
+import { getBlogsMetadata } from "@/lib/blog"
 import { generateBlogMetadata, generateStructuredData } from "@/lib/seo"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: BlogPageProps) {
 
 export async function generateStaticParams() {
   try {
-    const { blogs } = await getAllBlogs("published")
+    const { blogs } = await getBlogsMetadata("published")
 
     if (!blogs || blogs.length === 0) {
       return []

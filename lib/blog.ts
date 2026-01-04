@@ -243,33 +243,18 @@ export async function getBlogsByAuthor(
   return { blogs: data.map(transformBlogData), error: null };
 }
 
-// Get all blogs with optional status filter
-export async function getAllBlogs(
+// Get blog metadata only (for generateStaticParams) - lightweight version
+export async function getBlogsMetadata(
   status?: "published" | "draft" | "pending" | "archived"
 ): Promise<{
-  blogs: Blog[];
+  blogs: Array<{ id: string }>;
   error: string | null;
 }> {
   const supabase = createClient();
 
   let query = supabase
     .from("blogs")
-    .select(
-      `
-      *,
-      profiles:author_id (
-        id,
-        full_name,
-        email,
-        avatar_url
-      ),
-      categories:category_id (
-        id,
-        name,
-        color
-      )
-    `
-    )
+    .select("id", { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (status) {
@@ -282,7 +267,74 @@ export async function getAllBlogs(
     return { blogs: [], error: error.message };
   }
 
-  return { blogs: data.map(transformBlogData), error: null };
+  return { blogs: data || [], error: null };
+}
+
+// Get all blogs with optional status filter
+export async function getAllBlogs(
+  status?: "published" | "draft" | "pending" | "archived",
+  limit?: number
+): Promise<{
+  blogs: Blog[];
+  error: string | null;
+}> {
+  const supabase = createClient();
+
+  let query = supabase
+    .from("blogs")
+    .select(
+      `
+      id,
+      title,
+      slug,
+      excerpt,
+      author_id,
+      profiles:author_id (
+        id,
+        full_name,
+        email,
+        avatar_url
+      ),
+      category_id,
+      categories:category_id (
+        id,
+        name,
+        color
+      ),
+      tags,
+      featured_image,
+      status,
+      views,
+      likes,
+      created_at,
+      updated_at,
+      published_at
+    `
+    )
+    .order("created_at", { ascending: false });
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  if (limit) {
+    query = query.limit(limit);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    return { blogs: [], error: error.message };
+  }
+
+  // Transform to Blog objects, but without content
+  const blogs = data?.map((blog: any) => ({
+    ...transformBlogData({ ...blog, content: "", images: [] }),
+    content: "", // Exclude content to reduce cache size
+    images: [],  // Exclude images to reduce cache size
+  })) || [];
+
+  return { blogs, error: null };
 }
 
 // Get blogs by category
