@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyOTP } from "@/lib/otp";
 import { createClient } from "@/lib/supabase/server";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 /**
  * POST /api/auth/otp/reset-password
  * Reset password after OTP verification
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (updateError) {
-      console.error("Error resetting password:", updateError);
+      devError("Error resetting password:", updateError);
       return NextResponse.json(
         { error: "Failed to reset password. Please try again." },
         { status: 500 }
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error resetting password:", error);
+    devError("Error resetting password:", error);
     return NextResponse.json(
       { error: "An error occurred while resetting password" },
       { status: 500 }

@@ -1,6 +1,10 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { NextResponse, NextRequest } from "next/server"
 
+const isDev = process.env.NODE_ENV !== "production"
+const devLog = (...args: any[]) => { if (isDev) console.log(...args) }
+const devError = (...args: any[]) => { if (isDev) console.error(...args) }
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
@@ -12,7 +16,7 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
       
       if (error) {
-        console.error("Exchange error:", error)
+        devError("Exchange error:", error)
         return NextResponse.redirect(`${origin}/auth/auth-code-error`)
       }
 
@@ -22,6 +26,11 @@ export async function GET(request: NextRequest) {
 
       const user = data.user
       const email = user.email
+      
+      if (!email) {
+        return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+      }
+      
       const provider = user.app_metadata?.provider
 
       // Handle OAuth provider (Google, GitHub, etc.)
@@ -60,17 +69,17 @@ export async function GET(request: NextRequest) {
           // User must register manually first
           const userId = user.id
           
-          console.log(`Attempting to delete unauthorized Google user: ${userId} (${email})`)
+          devLog(`Attempting to delete unauthorized Google user: ${userId} (${email})`)
           
           // Delete the auth user that was just created using admin client
           const adminClient = createAdminClient()
           const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId)
           
           if (deleteError) {
-            console.error("Failed to delete unauthorized user:", deleteError)
+            devError("Failed to delete unauthorized user:", deleteError)
             // Still continue to sign out and redirect
           } else {
-            console.log(`Successfully deleted unauthorized user: ${userId}`)
+            devLog(`Successfully deleted unauthorized user: ${userId}`)
           }
           
           // Sign out the current session
@@ -112,7 +121,7 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (err) {
-      console.error("Callback error:", err)
+      devError("Callback error:", err)
       return NextResponse.redirect(`${origin}/auth/auth-code-error`)
     }
   }

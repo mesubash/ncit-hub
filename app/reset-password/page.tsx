@@ -10,6 +10,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Loader2, ArrowLeft, CheckCircle, Eye, EyeOff, AlertCircle } from "lucide-react";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,7 +34,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     if (code && email && step === "password") {
       // Auto-skip OTP verification since we have the code from the link
-      console.log("OTP auto-filled from link");
+      devLog("OTP auto-filled from link");
     }
   }, [code, email, step]);
 
@@ -61,7 +65,7 @@ export default function ResetPasswordPage() {
       setStep("password");
     } catch (err) {
       setError("An error occurred. Please try again.");
-      console.error(err);
+      devError(err);
     } finally {
       setLoading(false);
     }
@@ -113,7 +117,7 @@ export default function ResetPasswordPage() {
       }, 2000);
     } catch (err) {
       setError("An error occurred. Please try again.");
-      console.error(err);
+      devError(err);
     } finally {
       setLoading(false);
     }

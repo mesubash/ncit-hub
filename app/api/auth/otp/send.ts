@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createOTPToken } from "@/lib/otp";
 import { sendOTPEmail } from "@/lib/email";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 /**
  * POST /api/auth/otp/send
  * Send OTP to user email for verification
@@ -73,8 +77,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log for debugging (remove in production if desired)
-    console.log(`OTP sent to ${email} for ${purpose}: ${otpToken.otp_code}`);
+    // Log for debugging (dev only)
+    devLog(`OTP sent to ${email} for ${purpose}: ${otpToken.otp_code}`);
 
     return NextResponse.json(
       {
@@ -88,7 +92,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error sending OTP:", error);
+    devError("Error sending OTP:", error);
     return NextResponse.json(
       { error: "An error occurred while sending OTP" },
       { status: 500 }

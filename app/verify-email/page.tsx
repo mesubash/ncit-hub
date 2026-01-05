@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 export default function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,7 +63,7 @@ export default function VerifyEmailPage() {
       setResendCountdown(60); // 60 second cooldown
     } catch (err) {
       setError("An error occurred. Please try again.");
-      console.error(err);
+      devError(err);
     } finally {
       setLoading(false);
     }
@@ -101,7 +105,7 @@ export default function VerifyEmailPage() {
       }, 2000);
     } catch (err) {
       setError("An error occurred. Please try again.");
-      console.error(err);
+      devError(err);
     } finally {
       setVerifying(false);
     }

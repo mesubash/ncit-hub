@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import { Loader2, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { formatCollegeEmail } from "@/lib/auth";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -46,7 +49,7 @@ export default function ForgotPasswordPage() {
       }, 3000);
     } catch (err) {
       setError("An error occurred. Please try again.");
-      console.error(err);
+      devError(err);
     } finally {
       setLoading(false);
     }

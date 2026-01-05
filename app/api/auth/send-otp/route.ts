@@ -4,6 +4,9 @@ import { createOTPToken } from "@/lib/otp";
 import { sendOTPEmail } from "@/lib/email";
 import { isValidCollegeEmail } from "@/lib/auth";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 export async function POST(request: NextRequest) {
   try {
     const { email, purpose, userName } = await request.json();
@@ -68,7 +71,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error("Error creating OTP token:", error);
+      devError("Error creating OTP token:", error);
       return NextResponse.json(
         { success: false, message: "Failed to generate OTP code" },
         { status: 500 }
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!emailSent) {
-      console.error("Failed to send OTP email");
+      devError("Failed to send OTP email");
       return NextResponse.json(
         { success: false, message: "Failed to send OTP email" },
         { status: 500 }
@@ -109,7 +112,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error in send-otp:", error);
+    devError("Error in send-otp:", error);
     return NextResponse.json(
       {
         success: false,

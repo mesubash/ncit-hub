@@ -13,6 +13,9 @@ import { getAllEvents, type Event } from "@/lib/events"
 import { useFeatureToggle } from "@/hooks/use-feature-toggle"
 import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 
+const isDev = process.env.NODE_ENV !== "production"
+const devError = (...args: any[]) => { if (isDev) console.error(...args) }
+
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
   const [blogs, setBlogs] = useState<Blog[]>([])
@@ -51,7 +54,7 @@ export default function HomePage() {
         setEvents([])
       }
     } catch (error) {
-      console.error("Failed to load data:", error)
+      devError("Failed to load data:", error)
     } finally {
       setIsLoadingData(false)
     }

@@ -3,6 +3,10 @@ import { createOTPToken } from "@/lib/otp";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { createClient } from "@/lib/supabase/server";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 /**
  * POST /api/auth/otp/forgot-password
  * Initiate password reset by sending OTP to email
@@ -79,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     if (!emailSent) {
       // Still return success to not reveal if email sending failed
-      console.error(`Failed to send password reset email to ${email}`);
+      devError(`Failed to send password reset email to ${email}`);
       return NextResponse.json(
         {
           success: true,
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Password reset OTP sent to ${email}: ${otpToken.otp_code}`);
+    devLog(`Password reset OTP sent to ${email}: ${otpToken.otp_code}`);
 
     return NextResponse.json(
       {
@@ -107,7 +111,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error in forgot password:", error);
+    devError("Error in forgot password:", error);
     return NextResponse.json(
       {
         success: true,

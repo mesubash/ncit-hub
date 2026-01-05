@@ -69,23 +69,14 @@ export default function ProfilePage() {
   })
 
   useEffect(() => {
-    console.log("Profile page auth check:", { isLoading, isAuthenticated, hasUser: !!user });
-    
     // Only redirect if we're sure the auth state has loaded and user is not authenticated
     if (!isLoading && !isAuthenticated && !user) {
-      console.log("Redirecting to login from profile page - no user found");
       router.push("/login")
     }
   }, [isAuthenticated, isLoading, user, router])
 
   useEffect(() => {
     if (user) {
-      console.log("Profile: User data loaded", { 
-        hasSocialLinks: !!(user as any).social_links,
-        socialLinksType: typeof (user as any).social_links,
-        socialLinks: (user as any).social_links 
-      });
-      
       // Parse social_links if it's a string
       let parsedSocialLinks = (user as any).social_links || {};
       if (typeof parsedSocialLinks === 'string') {

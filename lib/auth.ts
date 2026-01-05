@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
+const devWarn = (...args: any[]) => { if (isDev) console.warn(...args); };
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 // Extend the database Profile type with OAuth and verification fields
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"] & {
   email_verified?: boolean;
@@ -89,19 +94,19 @@ export function profileToUser(profile: Profile): User {
 
 // Clean auth system - check current session
 export async function getCurrentUser(): Promise<User | null> {
-  console.log("getCurrentUser: Starting session check...");
+  devLog("getCurrentUser: Starting session check...");
 
   try {
     const supabase = createClient();
-    console.log("getCurrentUser: Created Supabase client");
+    devLog("getCurrentUser: Created Supabase client");
 
     // Check if we're on the client side
     if (typeof window === "undefined") {
-      console.log("getCurrentUser: Running on server side, skipping");
+      devLog("getCurrentUser: Running on server side, skipping");
       return null;
     }
 
-    console.log("getCurrentUser: About to call getUser()...");
+    devLog("getCurrentUser: About to call getUser()...");
 
     // Use getUser() instead of getSession() - it validates the JWT and refreshes if needed
     const {
@@ -109,7 +114,7 @@ export async function getCurrentUser(): Promise<User | null> {
       error: userError,
     } = await supabase.auth.getUser();
 
-    console.log("getCurrentUser: getUser() returned!", {
+    devLog("getCurrentUser: getUser() returned!", {
       hasUser: !!authUser,
       userId: authUser?.id,
       userEmail: authUser?.email,
@@ -117,16 +122,16 @@ export async function getCurrentUser(): Promise<User | null> {
     });
 
     if (userError) {
-      console.error("getCurrentUser: User error:", userError);
+      devError("getCurrentUser: User error:", userError);
       return null;
     }
 
     if (!authUser) {
-      console.log("getCurrentUser: No authenticated user");
+      devLog("getCurrentUser: No authenticated user");
       return null;
     }
 
-    console.log("getCurrentUser: Valid user found, fetching profile...");
+    devLog("getCurrentUser: Valid user found, fetching profile...");
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase
@@ -135,7 +140,7 @@ export async function getCurrentUser(): Promise<User | null> {
       .eq("id", authUser.id)
       .single();
 
-    console.log("getCurrentUser: Profile fetch result:", {
+    devLog("getCurrentUser: Profile fetch result:", {
       hasProfile: !!profile,
       profileId: profile?.id,
       profileEmail: profile?.email,
@@ -145,17 +150,17 @@ export async function getCurrentUser(): Promise<User | null> {
     });
 
     if (profileError) {
-      console.error("getCurrentUser: Profile error:", profileError);
+      devError("getCurrentUser: Profile error:", profileError);
       return null;
     }
 
     if (!profile) {
-      console.log("getCurrentUser: No profile found for user");
+      devLog("getCurrentUser: No profile found for user");
       return null;
     }
 
     const user = profileToUser(profile);
-    console.log("getCurrentUser: Success! Returning user:", {
+    devLog("getCurrentUser: Success! Returning user:", {
       id: user.id,
       email: user.email,
       role: user.role,
@@ -163,7 +168,7 @@ export async function getCurrentUser(): Promise<User | null> {
     });
     return user;
   } catch (error) {
-    console.error("getCurrentUser error:", error);
+    devError("getCurrentUser error:", error);
     return null;
   }
 }
@@ -173,7 +178,7 @@ export async function signIn(
   email: string,
   password: string
 ): Promise<{ user: User | null; error: string | null }> {
-  console.log("signIn: Starting for", email);
+  devLog("signIn: Starting for", email);
 
   if (!isValidCollegeEmail(email)) {
     return {
@@ -192,7 +197,7 @@ export async function signIn(
       });
 
     if (authError) {
-      console.error("Auth error:", authError);
+      devError("Auth error:", authError);
       return { user: null, error: authError.message };
     }
 
@@ -200,7 +205,7 @@ export async function signIn(
       return { user: null, error: "Authentication failed" };
     }
 
-    console.log("Auth successful, fetching profile...");
+    devLog("Auth successful, fetching profile...");
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase
@@ -210,19 +215,19 @@ export async function signIn(
       .single();
 
     if (profileError && profileError.code !== "PGRST116") {
-      console.error("Profile error:", profileError);
+      devError("Profile error:", profileError);
       return { user: null, error: "Failed to load user profile" };
     }
 
     if (!profile) {
       // Create profile if it doesn't exist - use metadata from auth.users
-      console.log("Creating new profile from auth metadata...");
+      devLog("Creating new profile from auth metadata...");
 
       const metadata = authData.user.user_metadata || {};
       const userType = metadata.user_type as UserType;
       const role: UserRole = userType === "faculty" ? "faculty" : "student";
 
-      console.log("Creating profile with metadata:", {
+      devLog("Creating profile with metadata:", {
         full_name: metadata.full_name,
         role,
         user_type: userType,
@@ -253,18 +258,18 @@ export async function signIn(
         .single();
 
       if (createError) {
-        console.error("Profile creation error:", createError);
+        devError("Profile creation error:", createError);
         return { user: null, error: "Failed to create user profile" };
       }
 
       const user = profileToUser(newProfile);
-      console.log("signIn success with new profile:", user.email);
+      devLog("signIn success with new profile:", user.email);
       return { user, error: null };
     }
 
     // Check if email is verified
     if (!profile.email_verified) {
-      console.log("signIn: Email not verified for user:", profile.email);
+      devLog("signIn: Email not verified for user:", profile.email);
       
       // Sign out the user immediately since email is not verified
       await supabase.auth.signOut();
@@ -273,10 +278,10 @@ export async function signIn(
     }
 
     const user = profileToUser(profile);
-    console.log("signIn success:", user.email);
+    devLog("signIn success:", user.email);
     return { user, error: null };
   } catch (err) {
-    console.error("signIn error:", err);
+    devError("signIn error:", err);
     return { user: null, error: "An unexpected error occurred" };
   }
 }
@@ -305,7 +310,7 @@ export async function signUp(
   // Determine role based on user_type BEFORE signup
   const role: UserRole = userType === "faculty" ? "faculty" : "student";
 
-  console.log("signUp: Starting registration with:", {
+  devLog("signUp: Starting registration with:", {
     email,
     name,
     userType,
@@ -354,7 +359,7 @@ export async function signUp(
   }
 
   // IMMEDIATELY sign out to prevent auto-login - do this BEFORE any other operations
-  console.log("signUp: Immediately signing out to prevent auto-login...");
+  devLog("signUp: Immediately signing out to prevent auto-login...");
   await supabase.auth.signOut();
 
   // Check if email confirmation is required
@@ -379,7 +384,7 @@ export async function signUp(
 
   if (existingProfile) {
     // Profile already exists (maybe from trigger)
-    console.log("Profile already exists");
+    devLog("Profile already exists");
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("isRegistering");
     }
@@ -390,10 +395,10 @@ export async function signUp(
   }
 
   // Create user profile
-  console.log("Creating new profile for user:", authData.user.id);
+  devLog("Creating new profile for user:", authData.user.id);
 
   // Log what we're about to insert
-  console.log("Creating profile with data:", {
+  devLog("Creating profile with data:", {
     id: authData.user.id,
     email,
     full_name: name,
@@ -424,7 +429,7 @@ export async function signUp(
     .single();
 
   if (profileError) {
-    console.error("Profile creation error:", profileError);
+    devError("Profile creation error:", profileError);
 
     // Wait a moment and try multiple times (database might need time to commit)
     let retryCount = 0;
@@ -434,7 +439,7 @@ export async function signUp(
       await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms
       retryCount++;
 
-      console.log(`Retry ${retryCount}/${maxRetries}: Checking for profile...`);
+      devLog(`Retry ${retryCount}/${maxRetries}: Checking for profile...`);
 
       const { data: retryProfile, error: retryError } = await supabase
         .from("profiles")
@@ -443,7 +448,7 @@ export async function signUp(
         .single();
 
       if (retryProfile) {
-        console.log("Profile found on retry", retryCount);
+        devLog("Profile found on retry", retryCount);
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("isRegistering");
         }
@@ -455,7 +460,7 @@ export async function signUp(
       }
 
       if (retryError) {
-        console.error(`Retry ${retryCount} error:`, retryError);
+        devError(`Retry ${retryCount} error:`, retryError);
       }
     }
 
@@ -469,7 +474,7 @@ export async function signUp(
   }
 
   // Success - user profile created
-  console.log("Profile created successfully", {
+  devLog("Profile created successfully", {
     id: profile.id,
     email: profile.email,
     role: profile.role,
@@ -491,14 +496,14 @@ export async function signUp(
 
 // Sign out function
 export async function signOut(): Promise<void> {
-  console.log("signOut: Starting...");
+  devLog("signOut: Starting...");
   const supabase = createClient();
   const { error } = await supabase.auth.signOut();
 
   if (error) {
-    console.error("signOut error:", error);
+    devError("signOut error:", error);
   } else {
-    console.log("signOut success");
+    devLog("signOut success");
   }
 }
 
@@ -590,7 +595,7 @@ export async function changePassword(
 
     return { success: true, error: null };
   } catch (error: any) {
-    console.error("Change password error:", error);
+    devError("Change password error:", error);
     return {
       success: false,
       error: error.message || "Failed to change password",
@@ -612,7 +617,7 @@ export async function signInWithGoogle(): Promise<void> {
   });
 
   if (error) {
-    console.error("Google sign-in error:", error);
+    devError("Google sign-in error:", error);
     throw error;
   }
 

@@ -23,6 +23,10 @@ import { Search, Calendar, Clock, MapPin, ArrowLeft, Users, Loader2, UserPlus, U
 import { useFeatureToggle } from "@/hooks/use-feature-toggle"
 import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
 
+const isDev = process.env.NODE_ENV !== "production"
+const devLog = (...args: any[]) => { if (isDev) console.log(...args) }
+const devError = (...args: any[]) => { if (isDev) console.error(...args) }
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [categories, setCategories] = useState<CategoryRow[]>([])
@@ -60,7 +64,7 @@ export default function EventsPage() {
       const [eventsResult, categoriesResult] = await Promise.all([getAllEvents(), getBlogCategories()])
 
       if (eventsResult.error) {
-        console.error("Failed to load events:", eventsResult.error)
+        devError("Failed to load events:", eventsResult.error)
       } else {
         setEvents(eventsResult.events)
         // Load user registrations with the fresh events data
@@ -70,12 +74,12 @@ export default function EventsPage() {
       }
 
       if (categoriesResult.error) {
-        console.error("Failed to load categories:", categoriesResult.error)
+        devError("Failed to load categories:", categoriesResult.error)
       } else {
         setCategories(categoriesResult.categories)
       }
     } catch (error) {
-      console.error("Failed to load data:", error)
+      devError("Failed to load data:", error)
     } finally {
       setIsLoading(false)
     }
@@ -96,9 +100,9 @@ export default function EventsPage() {
         }),
       )
       setRegisteredEvents(registrations.filter(Boolean) as string[])
-      console.log("🔄 User registrations reloaded:", registrations.filter(Boolean))
+      devLog("🔄 User registrations reloaded:", registrations.filter(Boolean))
     } catch (error) {
-      console.error("Failed to load user registrations:", error)
+      devError("Failed to load user registrations:", error)
     }
   }
 
@@ -109,14 +113,14 @@ export default function EventsPage() {
 
     try {
       const isRegistered = registeredEvents.includes(eventId)
-      console.log(`🔍 Event ${eventId}: isRegistered = ${isRegistered}, user = ${user.id}`)
+      devLog(`🔍 Event ${eventId}: isRegistered = ${isRegistered}, user = ${user.id}`)
 
       if (isRegistered) {
         // Cancel registration
-        console.log(`🔄 Attempting to cancel registration for event ${eventId}...`)
+        devLog(`🔄 Attempting to cancel registration for event ${eventId}...`)
         const { error } = await cancelEventRegistration(eventId, user.id)
         if (error) {
-          console.error("❌ Failed to cancel registration:", error)
+          devError("❌ Failed to cancel registration:", error)
           toast({
             title: "Error",
             description: error,
@@ -130,15 +134,15 @@ export default function EventsPage() {
           })
           
           // Reload event data AND user registrations (loadData now handles both)
-          console.log("✅ Registration cancelled, reloading data...")
+          devLog("✅ Registration cancelled, reloading data...")
           await loadData()
         }
       } else {
         // Register for event
-        console.log(`🔄 Attempting to register for event ${eventId}...`)
+        devLog(`🔄 Attempting to register for event ${eventId}...`)
         const { registration, error } = await registerForEvent(eventId, user.id)
         if (error) {
-          console.error("❌ Failed to register:", error)
+          devError("❌ Failed to register:", error)
           toast({
             title: "Registration Failed",
             description: error,
@@ -152,12 +156,12 @@ export default function EventsPage() {
           })
           
           // Reload event data AND user registrations (loadData now handles both)
-          console.log("✅ Registration successful, reloading data...")
+          devLog("✅ Registration successful, reloading data...")
           await loadData()
         }
       }
     } catch (error) {
-      console.error("❌ Registration error:", error)
+      devError("❌ Registration error:", error)
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",

@@ -6,6 +6,11 @@ import { createClient } from "@/lib/supabase/client"
 import { type AuthState, getCurrentUser, signOut as authSignOut } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 
+const isDev = process.env.NODE_ENV !== "production"
+const devLog = (...args: any[]) => { if (isDev) console.log(...args) }
+const devWarn = (...args: any[]) => { if (isDev) console.warn(...args) }
+const devError = (...args: any[]) => { if (isDev) console.error(...args) }
+
 interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -32,12 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Check if cache is less than 24 hours old
         const cacheAge = Date.now() - parsed.cachedAt;
         if (cacheAge < 24 * 60 * 60 * 1000) {
-          console.log("AuthProvider: Using cached profile");
+          devLog("AuthProvider: Using cached profile");
           return parsed.user;
         }
       }
     } catch (error) {
-      console.warn("AuthProvider: Error loading cached user:", error);
+      devWarn("AuthProvider: Error loading cached user:", error);
     }
     return null;
   };
@@ -50,19 +55,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         cachedAt: Date.now(),
       }));
     } catch (error) {
-      console.warn("AuthProvider: Error caching user:", error);
+      devWarn("AuthProvider: Error caching user:", error);
     }
   };
 
   const loadUser = async (authUserId: string, sessionEmail: string) => {
-    console.log("AuthProvider: Loading user profile for:", authUserId);
+    devLog("AuthProvider: Loading user profile for:", authUserId);
     
     // Try to load from cache first
     const cachedUser = loadCachedUser(authUserId);
     
     if (cachedUser) {
       // Use cached user immediately for instant UI
-      console.log("AuthProvider: Setting cached user immediately");
+      devLog("AuthProvider: Setting cached user immediately");
       setAuthState({
         user: cachedUser,
         isLoading: false,
@@ -106,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     try {
       const supabase = createClient();
-      console.log("AuthProvider: Loading fresh profile in background...");
+      devLog("AuthProvider: Loading fresh profile in background...");
       
       // Race between the query and timeout
       const result = await Promise.race([
@@ -121,12 +126,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: profile, error: profileError } = result;
 
       if (profileError) {
-        console.warn("AuthProvider: Profile query failed, keeping current user:", profileError.message);
+        devWarn("AuthProvider: Profile query failed, keeping current user:", profileError.message);
         return;
       }
 
       if (profile) {
-        console.log("AuthProvider: Fresh profile loaded, updating state and cache");
+        devLog("AuthProvider: Fresh profile loaded, updating state and cache");
         const user = {
           id: profile.id,
           email: profile.email,
@@ -160,15 +165,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         cacheUser(authUserId, user);
       }
     } catch (error) {
-      console.warn("AuthProvider: Background profile load failed, keeping current user:", error);
+      devWarn("AuthProvider: Background profile load failed, keeping current user:", error);
     }
   };
 
   const refreshUser = async () => {
-    console.log("AuthProvider: Starting refreshUser...");
+    devLog("AuthProvider: Starting refreshUser...");
     try {
       const user = await getCurrentUser();
-      console.log("AuthProvider: getCurrentUser result:", { 
+      devLog("AuthProvider: getCurrentUser result:", { 
         hasUser: !!user,
         email: user?.email,
         role: user?.role,
@@ -180,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
       });
     } catch (error) {
-      console.error("AuthProvider: Error in refreshUser:", error);
+      devError("AuthProvider: Error in refreshUser:", error);
       setAuthState({
         user: null,
         isLoading: false,
@@ -190,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    console.log("AuthProvider: Signing out...");
+    devLog("AuthProvider: Signing out...");
     try {
       await authSignOut();
       
@@ -207,12 +212,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: false,
       });
     } catch (error) {
-      console.error("AuthProvider: Error signing out:", error);
+      devError("AuthProvider: Error signing out:", error);
     }
   };
 
   useEffect(() => {
-    console.log("AuthProvider: Initializing...");
+    devLog("AuthProvider: Initializing...");
     const supabase = createClient();
 
     // Listen for auth changes FIRST, then get initial session
@@ -222,7 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check if we're in registration mode - if so, ignore ALL auth events
       const isRegistering = typeof window !== 'undefined' && sessionStorage.getItem('isRegistering') === 'true';
       
-      console.log("AuthProvider: Auth state change:", event, {
+      devLog("AuthProvider: Auth state change:", event, {
         hasSession: !!session,
         hasUser: !!session?.user,
         userEmail: session?.user?.email,
@@ -231,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       
       if (isRegistering) {
-        console.log("AuthProvider: Ignoring ALL auth events during registration");
+        devLog("AuthProvider: Ignoring ALL auth events during registration");
         return;
       }
       
@@ -277,7 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             description: "You have been signed out successfully.",
           });
         } else {
-          console.log("AuthProvider: Ignoring SIGNED_OUT event during registration");
+          devLog("AuthProvider: Ignoring SIGNED_OUT event during registration");
         }
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         // Token was refreshed, reload user data
@@ -289,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      console.log("AuthProvider: Cleaning up subscription");
+      devLog("AuthProvider: Cleaning up subscription");
       subscription.unsubscribe();
     };
   }, []);

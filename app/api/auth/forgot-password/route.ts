@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { isValidCollegeEmail } from "@/lib/auth";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
@@ -47,7 +50,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error("Error creating OTP token:", error);
+      devError("Error creating OTP token:", error);
       return NextResponse.json({
         success: true,
         message: "If an account exists with this email, a password reset link has been sent",
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!emailSent) {
-      console.error("Failed to send password reset email");
+      devError("Failed to send password reset email");
       // Still return success for security
     }
 
@@ -85,7 +88,7 @@ export async function POST(request: NextRequest) {
       message: "If an account exists with this email, a password reset link has been sent",
     });
   } catch (error) {
-    console.error("Error in forgot-password:", error);
+    devError("Error in forgot-password:", error);
     return NextResponse.json({
       success: true,
       message: "If an account exists with this email, a password reset link has been sent",

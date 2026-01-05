@@ -39,6 +39,9 @@ import {
   CheckCircle,
   AlertTriangle
 } from "lucide-react"
+
+const isDev = process.env.NODE_ENV !== "production"
+const devError = (...args: any[]) => { if (isDev) console.error(...args) }
 import { useToast } from "@/hooks/use-toast"
 import { useFeatureToggle } from "@/hooks/use-feature-toggle"
 import { FEATURE_TOGGLE_KEYS } from "@/lib/feature-toggles"
@@ -101,7 +104,7 @@ export default function EventDetailPage() {
         await loadParticipants(eventId)
       }
     } catch (error) {
-      console.error("Error loading event:", error)
+      devError("Error loading event:", error)
       toast({
         title: "❌ Error",
         description: "Failed to load event.",
@@ -119,12 +122,12 @@ export default function EventDetailPage() {
       const { participants: fetchedParticipants, error } = await getEventParticipants(eventId)
       
       if (error) {
-        console.error("Failed to load participants:", error)
+        devError("Failed to load participants:", error)
       } else {
         setParticipants(fetchedParticipants)
       }
     } catch (error) {
-      console.error("Error loading participants:", error)
+      devError("Error loading participants:", error)
     } finally {
       setLoadingParticipants(false)
     }
@@ -182,7 +185,7 @@ export default function EventDetailPage() {
         }
       }
     } catch (error) {
-      console.error("Registration error:", error)
+      devError("Registration error:", error)
       toast({
         title: "❌ Error",
         description: "An unexpected error occurred.",
@@ -231,7 +234,7 @@ export default function EventDetailPage() {
         router.push("/admin/events")
       }
     } catch (error) {
-      console.error("Error deleting event:", error)
+      devError("Error deleting event:", error)
       toast({
         title: "❌ Error",
         description: "An unexpected error occurred.",

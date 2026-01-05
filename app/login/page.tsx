@@ -19,6 +19,10 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, ArrowLeft, Eye, EyeOff, CheckCircle2, Mail } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
+const isDev = process.env.NODE_ENV !== "production"
+const devLog = (...args: any[]) => { if (isDev) console.log(...args) }
+const devError = (...args: any[]) => { if (isDev) console.error(...args) }
+
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -59,7 +63,7 @@ export default function LoginPage() {
   // Auto-redirect if already authenticated (but not during login process)
   useEffect(() => {
     if (isAuthenticated && user && !isLoading && !isSigningIn) {
-      console.log("Already authenticated, redirecting to appropriate page");
+      devLog("Already authenticated, redirecting to appropriate page");
       const redirectPath = user.role === "admin" ? "/admin" : "/profile";
       router.replace(redirectPath);
     }
@@ -93,7 +97,7 @@ export default function LoginPage() {
       }
       // If successful, the browser will redirect to Google
     } catch (err) {
-      console.error("Google sign-in error:", err)
+      devError("Google sign-in error:", err)
       setError("Failed to initiate Google sign-in")
       toast({
         title: "Error",
@@ -106,7 +110,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Login attempt started for email:", email)
+    devLog("Login attempt started for email:", email)
     setError("")
     setIsLoading(true)
     setIsSigningIn(true)
@@ -120,10 +124,10 @@ export default function LoginPage() {
       }
 
       // Sign in with email and password
-      console.log("Calling signIn function...")
+      devLog("Calling signIn function...")
       const { user: signInUser, error: signInError } = await signIn(email, password)
 
-      console.log("Sign in result:", {
+      devLog("Sign in result:", {
         success: !!signInUser,
         error: signInError,
         userEmail: signInUser?.email,
@@ -131,7 +135,7 @@ export default function LoginPage() {
       });
 
       if (signInError) {
-        console.log("Sign in error:", signInError)
+        devLog("Sign in error:", signInError)
         
         // Handle unverified email specifically
         if (signInError === "EMAIL_NOT_VERIFIED") {
@@ -161,7 +165,7 @@ export default function LoginPage() {
       }
 
       if (!signInUser) {
-        console.log("No user returned from signIn")
+        devLog("No user returned from signIn")
         const errorMsg = "Authentication failed. Please try again."
         setError(errorMsg)
         setIsLoading(false)
@@ -176,7 +180,7 @@ export default function LoginPage() {
 
       // Check if email is verified
       if (!signInUser.email_verified) {
-        console.log("Email not verified, redirecting to verification page")
+        devLog("Email not verified, redirecting to verification page")
         toast({
           title: "Email Verification Required",
           description: "Please verify your email before continuing.",
@@ -188,11 +192,11 @@ export default function LoginPage() {
         return
       }
 
-      console.log("Login successful! Redirecting immediately...")
+      devLog("Login successful! Redirecting immediately...")
       
       // Determine redirect path
       const redirectPath = signInUser.role === "admin" ? "/admin" : "/profile"
-      console.log("Navigating to:", redirectPath)
+      devLog("Navigating to:", redirectPath)
       
       // Show success toast
       toast({
@@ -204,7 +208,7 @@ export default function LoginPage() {
       window.location.href = redirectPath
 
     } catch (err) {
-      console.error("Login error:", err)
+      devError("Login error:", err)
       const errorMsg = "An unexpected error occurred. Please try again."
       setError(errorMsg)
       setIsLoading(false)

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyOTP } from "@/lib/otp";
 import { createClient } from "@/lib/supabase/server";
 
+const isDev = process.env.NODE_ENV !== "production";
+const devError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 /**
  * POST /api/auth/otp/verify
  * Verify OTP code and mark email as verified if email_verification
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
         .eq("id", verificationResult.user_id);
 
       if (updateError) {
-        console.error("Error updating email verification status:", updateError);
+        devError("Error updating email verification status:", updateError);
         // Don't fail the request, OTP was still verified correctly
       }
     }
@@ -78,7 +81,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error verifying OTP:", error);
+    devError("Error verifying OTP:", error);
     return NextResponse.json(
       { success: false, message: "An error occurred while verifying OTP" },
       { status: 500 }

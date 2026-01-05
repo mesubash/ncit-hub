@@ -15,6 +15,9 @@ import Link from "next/link"
 import { ArrowLeft, Bookmark, Calendar, Heart, MessageCircle, User, Loader2, BookmarkX } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
+const isDev = process.env.NODE_ENV !== "production"
+const devError = (...args: any[]) => { if (isDev) console.error(...args) }
+
 export default function BookmarksPage() {
   const { user } = useAuth()
   const { toast } = useToast()
@@ -34,7 +37,7 @@ export default function BookmarksPage() {
     try {
       const { blogs: bookmarkedBlogs, error } = await getUserBookmarkedBlogs(user.id)
       if (error) {
-        console.error("Failed to load bookmarks:", error)
+        devError("Failed to load bookmarks:", error)
         toast({
           title: "Error",
           description: "Failed to load bookmarks",
@@ -44,7 +47,7 @@ export default function BookmarksPage() {
         setBlogs(bookmarkedBlogs)
       }
     } catch (error) {
-      console.error("Failed to load bookmarks:", error)
+      devError("Failed to load bookmarks:", error)
     } finally {
       setIsLoading(false)
     }
@@ -70,7 +73,7 @@ export default function BookmarksPage() {
         })
       }
     } catch (error) {
-      console.error("Failed to remove bookmark:", error)
+      devError("Failed to remove bookmark:", error)
     } finally {
       setRemovingId(null)
     }
