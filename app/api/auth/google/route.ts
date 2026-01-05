@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const redirectUrl = new URL("/api/auth/callback", request.nextUrl.origin);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : "http://localhost:3000";
+    const redirectUrl = new URL("/api/auth/callback", appUrl);
 
     // Construct the Supabase OAuth URL
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
