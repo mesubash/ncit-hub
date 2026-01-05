@@ -322,6 +322,8 @@ export async function signUp(
     sessionStorage.setItem("isRegistering", "true");
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -336,7 +338,7 @@ export async function signUp(
         year,
         specialization,
       },
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: `${appUrl}/auth/callback`,
     },
   });
 
@@ -600,10 +602,12 @@ export async function changePassword(
 export async function signInWithGoogle(): Promise<void> {
   const supabase = createClient();
   
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback`,
+      redirectTo: `${appUrl}/auth/callback`,
     },
   });
 
