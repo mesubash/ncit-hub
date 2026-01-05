@@ -325,6 +325,12 @@ export default function AdminPage() {
                     Manage All Blogs
                   </Link>
                 </Button>
+                <Button className="w-full justify-start bg-transparent" variant="outline" asChild>
+                  <Link href="/admin/users">
+                    <Users className="h-4 w-4 mr-2" />
+                    Manage Users
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
 
