@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
 
-export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+// Extend the database Profile type with OAuth and verification fields
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"] & {
+  email_verified?: boolean;
+  email_verified_at?: string | null;
+  google_id?: string | null;
+  google_account_verified?: boolean;
+};
 
 export type UserType = "bachelor_student" | "master_student" | "faculty";
 export type ProgramType = "bachelor" | "master";
@@ -73,8 +79,8 @@ export function profileToUser(profile: Profile): User {
     bio: profile.bio,
     avatar_url: profile.avatar_url,
     email_verified: profile.email_verified ?? false,
-    email_verified_at: profile.email_verified_at,
-    google_id: profile.google_id,
+    email_verified_at: profile.email_verified_at ?? null,
+    google_id: profile.google_id ?? null,
     google_account_verified: profile.google_account_verified ?? false,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
