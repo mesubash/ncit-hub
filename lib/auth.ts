@@ -6,6 +6,7 @@ export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export type UserType = "bachelor_student" | "master_student" | "faculty";
 export type ProgramType = "bachelor" | "master";
 export type UserRole = "student" | "faculty" | "admin";
+export type OTPPurpose = "email_verification" | "password_reset" | "account_recovery";
 
 export interface User {
   id: string;
@@ -20,6 +21,10 @@ export interface User {
   specialization: string | null; // For master students or faculty
   bio: string | null;
   avatar_url: string | null;
+  email_verified: boolean;
+  email_verified_at: string | null;
+  google_id: string | null;
+  google_account_verified: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +33,18 @@ export interface AuthState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+}
+
+export interface OTPRequest {
+  email: string;
+  purpose: OTPPurpose;
+  userName?: string;
+}
+
+export interface OTPVerification {
+  email: string;
+  otp: string;
+  purpose: OTPPurpose;
 }
 
 // Format and validate NCIT email
@@ -55,6 +72,10 @@ export function profileToUser(profile: Profile): User {
     specialization: profile.specialization,
     bio: profile.bio,
     avatar_url: profile.avatar_url,
+    email_verified: profile.email_verified ?? false,
+    email_verified_at: profile.email_verified_at,
+    google_id: profile.google_id,
+    google_account_verified: profile.google_account_verified ?? false,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
   };
@@ -233,6 +254,16 @@ export async function signIn(
       const user = profileToUser(newProfile);
       console.log("signIn success with new profile:", user.email);
       return { user, error: null };
+    }
+
+    // Check if email is verified
+    if (!profile.email_verified) {
+      console.log("signIn: Email not verified for user:", profile.email);
+      
+      // Sign out the user immediately since email is not verified
+      await supabase.auth.signOut();
+      
+      return { user: null, error: "EMAIL_NOT_VERIFIED" };
     }
 
     const user = profileToUser(profile);
@@ -555,6 +586,83 @@ export async function changePassword(
     return {
       success: false,
       error: error.message || "Failed to change password",
+    };
+  }
+}
+
+// Sign in with Google OAuth
+export async function signInWithGoogle(): Promise<void> {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    console.error("Google sign-in error:", error);
+    throw error;
+  }
+
+  if (data?.url) {
+    window.location.href = data.url;
+  }
+}
+
+// Handle Google OAuth merge - update existing profile with Google info
+export async function updateProfileWithGoogleInfo(
+  googleId: string,
+  googleName?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    const updates: any = {
+      google_id: googleId,
+      google_account_verified: true,
+      email_verified: true,
+      email_verified_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only update name if current profile doesn't have one
+    if (googleName) {
+      const { data: currentProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (!currentProfile?.full_name) {
+        updates.full_name = googleName;
+      }
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", user.id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating profile with Google info:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to update profile",
     };
   }
 }
