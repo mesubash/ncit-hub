@@ -47,3 +47,5 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+# Supabase temp files
+supabase/.temp/
