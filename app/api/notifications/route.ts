@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { createClient } from "@/lib/supabase/server";
+import { requireVerifiedUser } from "@/lib/api-middleware";
 import type { NotificationType } from "@/lib/notifications";
 
 export async function POST(request: Request) {
   try {
-    // Verify the user is authenticated
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify the user is authenticated and email verified
+    const { error: authError, user } = await requireVerifiedUser();
+    
+    if (authError) {
+      return authError;
     }
 
     // Parse request body
