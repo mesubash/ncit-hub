@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -65,9 +65,14 @@ const bachelorSemesters = [1, 2, 3, 4, 5, 6, 7, 8]
 const mastersYears = [1, 2]
 
 export default function RegisterPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const prefilledEmail = searchParams.get("email") || ""
+  const prefilledName = searchParams.get("name") || ""
+
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
+    name: prefilledName,
+    email: prefilledEmail,
     password: "",
     confirmPassword: "",
     role: "", // student or faculty
@@ -84,7 +89,6 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
-  const router = useRouter()
   const { refreshUser } = useAuth()
   const { toast } = useToast()
 
@@ -242,30 +246,30 @@ export default function RegisterPage() {
           setSuccess(true)
           toast({
             title: "Registration Successful!",
-            description: "Please check your email to verify your account before signing in.",
+            description: "Please verify your email to complete registration.",
           })
           setTimeout(() => {
-            router.push("/login?message=Please check your email to verify your account")
-          }, 3000)
+            router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`)
+          }, 2000)
         } else if (error === "REGISTRATION_SUCCESS") {
-          // Registration successful - redirect to login
+          // Registration successful - redirect to email verification
           setSuccess(true)
           toast({
             title: "Registration Successful!",
-            description: "Your account has been created. Please sign in to continue.",
+            description: "Please verify your email to complete registration.",
           })
           setTimeout(() => {
-            router.push("/login?message=Registration successful! Please sign in.")
+            router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`)
           }, 2000)
         } else if (error === "PROFILE_CREATION_FAILED") {
-          // Auth user created but profile failed - still allow login
+          // Auth user created but profile failed - redirect to email verification
           setSuccess(true)
           toast({
             title: "Registration Successful!",
-            description: "Your account has been created. You can now sign in.",
+            description: "Please verify your email to complete registration.",
           })
           setTimeout(() => {
-            router.push("/login")
+            router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`)
           }, 2000)
         } else {
           // Actual error
@@ -277,14 +281,14 @@ export default function RegisterPage() {
           })
         }
       } else {
-        // No error and no user returned - this means registration successful
+        // No error and no user returned - redirect to email verification
         setSuccess(true)
         toast({
           title: "Registration Successful!",
-          description: "Your account has been created. Please sign in to continue.",
+          description: "Please verify your email to complete registration.",
         })
         setTimeout(() => {
-          router.push("/login?message=Registration successful! Please sign in.")
+          router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`)
         }, 2000)
       }
     } catch (err) {
