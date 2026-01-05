@@ -17,9 +17,36 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     specialization TEXT, -- For master's students or faculty's expertise
     bio TEXT,
     social_links JSONB DEFAULT '{}',  -- Store social media links
+    email_verified BOOLEAN DEFAULT FALSE,  -- Email verification status
+    email_verified_at TIMESTAMP WITH TIME ZONE,  -- When email was verified
+    google_id TEXT UNIQUE,  -- Google OAuth ID
+    google_account_verified BOOLEAN DEFAULT FALSE,  -- Google OAuth verification status
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create OTP tokens table for email verification and password reset
+CREATE TABLE IF NOT EXISTS public.otp_tokens (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    email CITEXT NOT NULL,
+    otp_code VARCHAR(6) NOT NULL,
+    purpose TEXT NOT NULL CHECK (purpose IN ('email_verification', 'password_reset', 'account_recovery')),
+    attempts INT DEFAULT 0,
+    max_attempts INT DEFAULT 3,
+    is_used BOOLEAN DEFAULT FALSE,
+    verified_at TIMESTAMP WITH TIME ZONE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (NOW() + INTERVAL '10 minutes'),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for OTP tokens
+CREATE INDEX IF NOT EXISTS idx_otp_tokens_user_id ON public.otp_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_otp_tokens_email ON public.otp_tokens(email);
+CREATE INDEX IF NOT EXISTS idx_otp_tokens_code ON public.otp_tokens(otp_code);
+CREATE INDEX IF NOT EXISTS idx_otp_tokens_expires_at ON public.otp_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_otp_tokens_purpose ON public.otp_tokens(purpose);
 
 -- Create categories table
 CREATE TABLE IF NOT EXISTS public.categories (
@@ -215,6 +242,7 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blog_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feature_toggles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.otp_tokens ENABLE ROW LEVEL SECURITY;
 
 -- Create update timestamp trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -251,6 +279,11 @@ CREATE TRIGGER set_timestamp_comments
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER set_timestamp_otp_tokens
+    BEFORE UPDATE ON public.otp_tokens
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Row Level Security Policies
 
 -- Profiles policies
@@ -266,7 +299,31 @@ WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can update own profile"
 ON public.profiles FOR UPDATE
 TO authenticated
-USING (auth.uid() = id);
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Admins can delete any user profile"
+ON public.profiles FOR DELETE
+TO authenticated
+USING (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'admin'
+));
+
+CREATE POLICY "Admins can update any user profile"
+ON public.profiles FOR UPDATE
+TO authenticated
+USING (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'admin'
+))
+WITH CHECK (EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'admin'
+));
 
 -- Categories policies
 CREATE POLICY "Categories are viewable by everyone"
@@ -476,6 +533,26 @@ USING (EXISTS (
     AND role = 'admin'
 ));
 
+-- OTP tokens policies
+CREATE POLICY "Users can view their own OTP tokens"
+ON public.otp_tokens FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Service can create OTP tokens (no auth required)"
+ON public.otp_tokens FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Users can update their own OTP tokens"
+ON public.otp_tokens FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own OTP tokens"
+ON public.otp_tokens FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
 -- Helper functions
 CREATE OR REPLACE FUNCTION increment_blog_views(blog_id UUID)
 RETURNS void AS $$
@@ -564,6 +641,80 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- OTP Helper Functions
+CREATE OR REPLACE FUNCTION generate_otp_code()
+RETURNS VARCHAR(6) AS $$
+BEGIN
+  RETURN LPAD(FLOOR(RANDOM() * 1000000)::TEXT, 6, '0');
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION cleanup_expired_otps()
+RETURNS void AS $$
+BEGIN
+  DELETE FROM public.otp_tokens 
+  WHERE expires_at < NOW() 
+  AND is_used = FALSE;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION verify_otp(
+  p_email CITEXT,
+  p_otp_code VARCHAR(6),
+  p_purpose TEXT
+)
+RETURNS TABLE(
+  success BOOLEAN,
+  message TEXT,
+  user_id UUID
+) AS $$
+DECLARE
+  v_otp_record RECORD;
+  v_user_id UUID;
+BEGIN
+  -- Find the OTP token
+  SELECT * INTO v_otp_record
+  FROM public.otp_tokens
+  WHERE email = p_email
+  AND otp_code = p_otp_code
+  AND purpose = p_purpose
+  AND is_used = FALSE
+  AND expires_at > NOW()
+  AND attempts < max_attempts
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF v_otp_record IS NULL THEN
+    -- Try to find the user for the error response
+    SELECT id INTO v_user_id
+    FROM public.profiles
+    WHERE email = p_email
+    LIMIT 1;
+
+    RETURN QUERY SELECT FALSE, 'Invalid or expired OTP'::TEXT, v_user_id;
+    RETURN;
+  END IF;
+
+  -- Mark OTP as used
+  UPDATE public.otp_tokens
+  SET is_used = TRUE,
+      verified_at = NOW(),
+      updated_at = NOW()
+  WHERE id = v_otp_record.id;
+
+  -- Mark email as verified if this was an email verification OTP
+  IF p_purpose = 'email_verification' THEN
+    UPDATE public.profiles
+    SET email_verified = TRUE,
+        email_verified_at = NOW(),
+        updated_at = NOW()
+    WHERE email = p_email;
+  END IF;
+
+  RETURN QUERY SELECT TRUE, 'OTP verified successfully'::TEXT, v_otp_record.user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
@@ -574,3 +725,6 @@ GRANT EXECUTE ON FUNCTION increment_event_participants(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION decrement_event_participants(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION increment_event_participants(UUID) TO anon;
 GRANT EXECUTE ON FUNCTION decrement_event_participants(UUID) TO anon;
+GRANT EXECUTE ON FUNCTION generate_otp_code() TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION cleanup_expired_otps() TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION verify_otp(CITEXT, VARCHAR, TEXT) TO authenticated, anon;
