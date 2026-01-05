@@ -21,10 +21,15 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login")
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push("/login")
+      } else if (user && !user.email_verified) {
+        // Redirect to verification page if email not verified
+        router.push(`/verify-email?email=${encodeURIComponent(user.email)}`)
+      }
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, user, router])
 
   if (isLoading) {
     return (
