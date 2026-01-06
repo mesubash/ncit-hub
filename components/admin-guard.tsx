@@ -6,6 +6,12 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 
+// Enable logs only on localhost or when explicitly toggled
+const isDev =
+  process.env.NEXT_PUBLIC_ENABLE_LOGS === "true" ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost")
+const devLog = (...args: any[]) => { if (isDev) console.log(...args) }
+
 interface AdminGuardProps {
   children: React.ReactNode
   fallback?: React.ReactNode
@@ -16,16 +22,16 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
   const router = useRouter()
 
   useEffect(() => {
-    console.log("AdminGuard auth check:", { isLoading, isAuthenticated, userRole: user?.role });
+    devLog("AdminGuard auth check:", { isLoading, isAuthenticated, userRole: user?.role });
     
     // Add a delay to prevent immediate redirect during auth state updates
     const redirectTimer = setTimeout(() => {
       if (!isLoading) {
         if (!isAuthenticated) {
-          console.log("AdminGuard: Redirecting to login");
+          devLog("AdminGuard: Redirecting to login");
           router.push("/login")
         } else if (user?.role !== "admin") {
-          console.log("AdminGuard: Redirecting to home - not admin");
+          devLog("AdminGuard: Redirecting to home - not admin");
           router.push("/")
         }
       }

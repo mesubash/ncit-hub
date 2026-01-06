@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
 
-const isDev = process.env.NODE_ENV !== "production";
+// Enable logs only on localhost or when explicitly toggled
+const isDev =
+  process.env.NEXT_PUBLIC_ENABLE_LOGS === "true" ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost");
 const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
 const devWarn = (...args: any[]) => { if (isDev) console.warn(...args); };
 const devError = (...args: any[]) => { if (isDev) console.error(...args); };
@@ -156,6 +159,12 @@ export async function getCurrentUser(): Promise<User | null> {
 
     if (!profile) {
       devLog("getCurrentUser: No profile found for user");
+      return null;
+    }
+
+    if (!profile.email_verified) {
+      devLog("getCurrentUser: Email not verified, signing out and returning null");
+      await supabase.auth.signOut();
       return null;
     }
 

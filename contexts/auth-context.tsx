@@ -6,7 +6,10 @@ import { createClient } from "@/lib/supabase/client"
 import { type AuthState, getCurrentUser, signOut as authSignOut } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 
-const isDev = process.env.NODE_ENV !== "production"
+// Enable logs only on localhost or when explicitly toggled
+const isDev =
+  process.env.NEXT_PUBLIC_ENABLE_LOGS === "true" ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost")
 const devLog = (...args: any[]) => { if (isDev) console.log(...args) }
 const devWarn = (...args: any[]) => { if (isDev) console.warn(...args) }
 const devError = (...args: any[]) => { if (isDev) console.error(...args) }
@@ -61,11 +64,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUser = async (authUserId: string, sessionEmail: string) => {
     devLog("AuthProvider: Loading user profile for:", authUserId);
+    const supabase = createClient();
+
+    const handleUnverified = async (email: string | undefined) => {
+      devLog("AuthProvider: User email not verified, signing out", email);
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        devWarn("AuthProvider: Error signing out unverified user:", signOutError);
+      }
+
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+
+      toast({
+        title: "Email verification required",
+        description: "Please verify your email to continue.",
+        variant: "destructive",
+      });
+    };
     
     // Try to load from cache first
     const cachedUser = loadCachedUser(authUserId);
     
     if (cachedUser) {
+      // If cached user is not verified, sign out immediately
+      if (!cachedUser.email_verified) {
+        await handleUnverified(cachedUser.email);
+        return;
+      }
+
       // Use cached user immediately for instant UI
       devLog("AuthProvider: Setting cached user immediately");
       setAuthState({
@@ -74,33 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: true,
       });
     } else {
-      // No cache, create fallback user immediately
-      const fallbackUser = {
-        id: authUserId,
-        email: sessionEmail,
-        full_name: sessionEmail.split('@')[0],
-        role: "student" as const,
-        user_type: null,
-        department: null,
-        program_type: null,
-        semester: null,
-        year: null,
-        specialization: null,
-        bio: null,
-        avatar_url: null,
-        email_verified: false,
-        email_verified_at: null,
-        google_id: null,
-        google_account_verified: false,
-        social_links: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
+      // No cache, stay unauthenticated until we confirm verification
       setAuthState({
-        user: fallbackUser,
-        isLoading: false,
-        isAuthenticated: true,
+        user: null,
+        isLoading: true,
+        isAuthenticated: false,
       });
     }
     
@@ -110,7 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     
     try {
-      const supabase = createClient();
       devLog("AuthProvider: Loading fresh profile in background...");
       
       // Race between the query and timeout
@@ -131,6 +139,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (profile) {
+        if (!profile.email_verified) {
+          await handleUnverified(profile.email);
+          return;
+        }
+
         devLog("AuthProvider: Fresh profile loaded, updating state and cache");
         const user = {
           id: profile.id,

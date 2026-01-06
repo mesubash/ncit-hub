@@ -22,7 +22,7 @@ export async function getCurrentUserServer(): Promise<User | null> {
     .eq("id", authUser.id)
     .single();
 
-  if (!profile) {
+  if (!profile || !profile.email_verified) {
     return null;
   }
 

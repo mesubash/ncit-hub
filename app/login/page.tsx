@@ -19,7 +19,10 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, ArrowLeft, Eye, EyeOff, CheckCircle2, Mail } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
-const isDev = process.env.NODE_ENV !== "production"
+// Enable logs only on localhost or when explicitly toggled
+const isDev =
+  process.env.NEXT_PUBLIC_ENABLE_LOGS === "true" ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost")
 const devLog = (...args: any[]) => { if (isDev) console.log(...args) }
 const devError = (...args: any[]) => { if (isDev) console.error(...args) }
 
